@@ -1,0 +1,12 @@
+{
+  "name": "labelsure-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LabelSure AI-Assisted Legal Metrology Compliance Scanner Root Scripts",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start:backend": "python backend/app.py",
+    "test:backend": "python backend/test_suite.py && python backend/test_enrichment.py && python backend/test_measurement_annotation.py"
+  }
+}
