@@ -3,7 +3,7 @@ Deterministic Legal Metrology (Packaged Commodities) Rule Engine.
 Evaluates normalized candidate declarations against versioned rules.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from legal_rules import LEGAL_METROLOGY_RULES, get_rules_for_date
 from format_validator import FormatValidator
 from measurement_engine import MeasurementEngine
@@ -20,7 +20,7 @@ class RulesEngine:
         Main entry point for evaluating package declarations against Legal Metrology rules.
         """
         if not inspection_date:
-            inspection_date = datetime.utcnow().strftime("%Y-%m-%d")
+            inspection_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         # 1. Filter rules effective as of inspection_date
         effective_rules = get_rules_for_date(inspection_date)
@@ -110,7 +110,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory declaration of Manufacturer / Packer / Importer name and address is missing."
@@ -134,7 +134,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory generic or common commodity name is missing."
@@ -165,7 +165,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory Net Quantity declaration is missing."
@@ -189,7 +189,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory Month & Year of manufacture / packing / import is missing."
@@ -213,7 +213,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory Maximum Retail Price (MRP) declaration is missing."
@@ -237,7 +237,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory Consumer Care contact details (phone / email / address) are missing."
@@ -261,7 +261,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory Country of Origin declaration for imported product is missing."
@@ -284,7 +284,7 @@ class RulesEngine:
                         reason = "NOT_VERIFIABLE_OCR_FAILURE: OCR could not extract reliable text from uploaded image."
                     elif single_surface_only:
                         status = "NOT_VERIFIABLE"
-                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image."
+                        reason = "NOT_VISIBLE_IN_UPLOADED_SURFACE: The declaration was not detected in the uploaded image surface."
                     else:
                         status = "FAIL"
                         reason = "Mandatory Unit Sale Price declaration is missing for package."
