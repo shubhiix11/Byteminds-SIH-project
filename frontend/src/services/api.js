@@ -14,10 +14,53 @@ export async function checkHealth() {
   }
 }
 
+async function resizeImageIfNeeded(file, maxDimension = 1600) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { width, height } = img;
+      if (width <= maxDimension && height <= maxDimension) {
+        return resolve(file);
+      }
+      let newW = width;
+      let newH = height;
+      if (width > height) {
+        newH = Math.round((height * maxDimension) / width);
+        newW = maxDimension;
+      } else {
+        newW = Math.round((width * maxDimension) / height);
+        newH = maxDimension;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, newW, newH);
+      canvas.toBlob((blob) => {
+        if (!blob) return resolve(file);
+        const optimizedFile = new File([blob], file.name, {
+          type: 'image/jpeg',
+          lastModified: Date.now()
+        });
+        resolve(optimizedFile);
+      }, 'image/jpeg', 0.92);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 export async function scanImage(imageFile, barcode = null, options = {}) {
   const { persist = true, inspector = null } = options;
+  const optimizedImage = await resizeImageIfNeeded(imageFile);
   const formData = new FormData();
-  formData.append('image', imageFile);
+  formData.append('image', optimizedImage);
   formData.append('persist', String(persist !== false));
   if (inspector) {
     formData.append('inspector', inspector);

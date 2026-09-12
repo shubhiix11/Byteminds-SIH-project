@@ -195,11 +195,18 @@ def scan_image():
     file_path = os.path.join(UPLOADS_DIR, saved_filename)
     file.save(file_path)
 
-    # Calculate real image dimensions & size safely
+    # Calculate real image dimensions & normalize oversized camera photos for fast OCR
     file_size_bytes = os.path.getsize(file_path)
     try:
         with Image.open(file_path) as img:
             img_w, img_h = img.size
+            if max(img_w, img_h) > 1600:
+                scale = 1600.0 / max(img_w, img_h)
+                new_w, new_h = int(img_w * scale), int(img_h * scale)
+                res = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                res.save(file_path, quality=95)
+                img_w, img_h = new_w, new_h
+                file_size_bytes = os.path.getsize(file_path)
     except Exception:
         img_w, img_h = 0, 0
 
