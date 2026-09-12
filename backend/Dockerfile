@@ -44,5 +44,5 @@ RUN tesseract --version && \
 # Expose port (Render overrides with dynamic $PORT)
 EXPOSE 5001
 
-# Start Gunicorn server using dynamic Render $PORT (fallback to 5001)
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5001} app:app"]
+# Start Gunicorn server using dynamic Render $PORT (fallback to 5001) with 180s timeout for OCR processing
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 2 --timeout 180 app:app"]
