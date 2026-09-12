@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Package, Tag, Calendar, Building, PhoneCall, Globe, Code2, LayoutGrid, CheckCircle2, XCircle, AlertTriangle, HelpCircle, ArrowLeft, Info, FileText, Barcode, Check, AlertCircle, Layers, Eye, ExternalLink, Search, ChevronDown, ChevronUp, Apple, ShoppingBag } from 'lucide-react';
-import { getUploadUrl, getReportDownloadUrl } from '../services/api';
+import { getUploadUrl, getReportDownloadUrl, saveScanRecord } from '../services/api';
 
 const STATUS_COLOR_MAP = {
   PASS: '#10b981',
@@ -10,7 +10,7 @@ const STATUS_COLOR_MAP = {
   NOT_APPLICABLE: '#6b7280'
 };
 
-export default function ResultsPage({ scanResult, onNewScan }) {
+export default function ResultsPage({ scanResult, onNewScan, user, onNavigateLogin, onScanSaved }) {
   const [viewMode, setViewMode] = useState(
     (scanResult?.openfoodfacts?.status === 'FOUND' || scanResult?.openfoodfacts_product || scanResult?.barcode)
       ? 'openfoodfacts'
@@ -19,6 +19,31 @@ export default function ResultsPage({ scanResult, onNewScan }) {
   const [imageTab, setImageTab] = useState('interactive'); // 'interactive' | 'annotated' | 'original'
   const [selectedRuleId, setSelectedRuleId] = useState(null);
   const [searchTraceOpen, setSearchTraceOpen] = useState(false);
+  const [dismissedGuestCta, setDismissedGuestCta] = useState(false);
+  const [isSaved, setIsSaved] = useState(Boolean(scanResult?.persisted));
+  const [saving, setSaving] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState(null);
+
+  const handleSaveScan = async () => {
+    if (!user) {
+      if (onNavigateLogin) onNavigateLogin();
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveScanRecord(scanResult, user.username);
+      setIsSaved(true);
+      setSaveSuccessMsg(`Inspection #${scanResult.scan_id} saved to your repository!`);
+      if (onScanSaved) {
+        onScanSaved({ ...scanResult, persisted: true, is_guest: false, inspector: user.username });
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to save scan record.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!scanResult) {
     return (
@@ -222,6 +247,64 @@ export default function ResultsPage({ scanResult, onNewScan }) {
           </button>
         </div>
       </div>
+
+      {/* Subtle Call-to-Action for Guest Scans (Requirement 6) */}
+      {(!user || (!isSaved && scanResult?.is_guest)) && !dismissedGuestCta && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(122, 167, 126, 0.12), rgba(255, 253, 251, 0.95))',
+          border: '1px solid rgba(122, 167, 126, 0.35)',
+          borderRadius: '16px',
+          padding: '1.1rem 1.4rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
+              <span className="status-pill online" style={{ fontSize: '0.7rem', padding: '0.1rem 0.5rem' }}>
+                Guest Inspection
+              </span>
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text)' }}>
+                Want to save this inspection?
+              </strong>
+            </div>
+            <p style={{ color: 'var(--muted)', fontSize: '0.82rem', margin: 0, lineHeight: '1.4' }}>
+              Sign in to keep this scan, report, and inspection history in your permanent repository.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={handleSaveScan}
+              disabled={saving}
+              style={{ minHeight: '36px', padding: '0 14px', fontSize: '0.82rem' }}
+            >
+              {saving ? 'Saving...' : (user ? 'Save to Repository' : 'Sign In to Save')}
+            </button>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setDismissedGuestCta(true)}
+              style={{ minHeight: '36px', padding: '0 12px', fontSize: '0.82rem' }}
+            >
+              Continue Viewing
+            </button>
+          </div>
+        </div>
+      )}
+
+      {saveSuccessMsg && (
+        <div className="alert-box" style={{ marginBottom: '1.5rem', background: 'var(--sage-soft)', borderColor: 'var(--sage-deep)' }}>
+          <div style={{ color: 'var(--sage-deep)', fontSize: '0.86rem', fontWeight: 600 }}>
+            ✓ {saveSuccessMsg}
+          </div>
+        </div>
+      )}
 
       {/* Legal Safety Notice & Alert Box from consumer-safety.html */}
       {overall_status === 'NON_COMPLIANT' ? (

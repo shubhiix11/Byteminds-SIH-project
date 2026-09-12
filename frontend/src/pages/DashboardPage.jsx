@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, CheckCircle2, AlertTriangle, HelpCircle, FileText, Download, ArrowUpRight, TrendingUp, Camera, ShieldCheck } from 'lucide-react';
 import { fetchDashboardMetrics, getReportDownloadUrl } from '../services/api';
 
-export default function DashboardPage({ onViewScanResult, onStartScan = () => {} }) {
+export default function DashboardPage({ user, onViewScanResult, onStartScan = () => {}, onNavigateLogin }) {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(user));
 
   const loadDashboard = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const metrics = await fetchDashboardMetrics();
@@ -20,7 +24,81 @@ export default function DashboardPage({ onViewScanResult, onStartScan = () => {}
 
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, [user]);
+
+  if (!user) {
+    return (
+      <div>
+        {/* Public / Guest Hero Banner */}
+        <section className="hero">
+          <div className="hero-text">
+            <p className="eyebrow">AI-Powered Legal Metrology Verification</p>
+            <h1>Scan first. Save when you're ready.</h1>
+            <p>
+              LabelSure provides fast, deterministic packaged commodity label compliance verification under the Legal Metrology (Packaged Commodities) Rules, 2011 with Open Food Facts corroboration.
+            </p>
+
+            <div className="hero-actions">
+              <button className="btn primary" type="button" onClick={onStartScan}>
+                <Camera size={16} />
+                <span>Continue as Guest — Scan Product</span>
+              </button>
+              {onNavigateLogin && (
+                <button className="btn secondary" type="button" onClick={onNavigateLogin}>
+                  <span>Sign In to Enforcement Portal</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="photo-box-wrap">
+            <div className="photo-box">
+              <div className="product-illustration">
+                <div className="box-top"></div>
+                <div className="box-body"></div>
+              </div>
+            </div>
+            <div className="compliant-tag">Guest Mode</div>
+          </div>
+        </section>
+
+        {/* Friendly Sign-In Required Card for Dashboard Metrics */}
+        <div className="panel" style={{ padding: '2.5rem 2rem', textAlign: 'center', margin: '2rem 0' }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            background: 'var(--sage-soft)',
+            color: 'var(--sage-deep)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1rem'
+          }}>
+            <ShieldCheck size={28} />
+          </div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text)', marginBottom: '0.4rem' }}>
+            Sign in to view your inspection dashboard.
+          </h2>
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', maxWidth: '520px', margin: '0 auto 1.5rem', lineHeight: '1.6' }}>
+            Personal inspection analytics, historical trends, and repository archives require inspector authentication. As a guest, you can still perform unlimited compliance scans and download PDF inspection reports.
+          </p>
+
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {onNavigateLogin && (
+              <button className="btn primary" type="button" onClick={onNavigateLogin} style={{ minHeight: '42px', padding: '0 20px' }}>
+                <span>Sign In with Inspector Account</span>
+              </button>
+            )}
+            <button className="btn secondary" type="button" onClick={onStartScan} style={{ minHeight: '42px', padding: '0 20px' }}>
+              <Camera size={16} />
+              <span>Start Free Guest Scan</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

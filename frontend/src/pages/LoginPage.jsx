@@ -92,6 +92,22 @@ export default function LoginPage({ onLoginSuccess }) {
             <span>Sign In to Enforcement Portal</span>
             <ArrowRight size={18} />
           </button>
+
+          {onContinueAsGuest && (
+            <div style={{ marginTop: '1.25rem', textAlign: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={onContinueAsGuest}
+                style={{ width: '100%', minHeight: '40px', fontSize: '0.85rem' }}
+              >
+                <span>Continue as Guest</span>
+              </button>
+              <p style={{ color: 'var(--muted)', fontSize: '0.76rem', marginTop: '0.5rem', lineHeight: '1.4' }}>
+                Scan a product without creating an account. Sign in only if you want to save inspections and reports.
+              </p>
+            </div>
+          )}
         </form>
       </div>
     </div>

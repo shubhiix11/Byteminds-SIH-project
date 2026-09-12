@@ -12,7 +12,7 @@ const SCAN_STEPS = [
   "Preparing annotated evidence..."
 ];
 
-export default function ScanPage({ onScanComplete }) {
+export default function ScanPage({ onScanComplete, user, onNavigateLogin }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [barcode, setBarcode] = useState('');
@@ -89,7 +89,10 @@ export default function ScanPage({ onScanComplete }) {
     }, 450);
 
     try {
-      const result = await scanImage(selectedFile, cleanBarcode || null);
+      const result = await scanImage(selectedFile, cleanBarcode || null, {
+        persist: Boolean(user),
+        inspector: user?.username || 'Guest'
+      });
       clearInterval(stepInterval);
       onScanComplete(result);
     } catch (err) {
@@ -113,6 +116,85 @@ export default function ScanPage({ onScanComplete }) {
           Upload packaged commodity package images to extract mandatory declarations, verify Legal Metrology (Packaged Commodities) Rules, and optionally corroborate with Open Food Facts.
         </p>
       </div>
+
+      {/* Landing Choice Banner for Logged-out / Guest Visitors */}
+      {!user && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(122, 167, 126, 0.12), rgba(255, 253, 251, 0.95))',
+          border: '1px solid rgba(122, 167, 126, 0.35)',
+          borderRadius: '16px',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <span className="status-pill online" style={{ fontSize: '0.72rem', padding: '0.15rem 0.6rem' }}>
+                Guest Mode
+              </span>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--text)' }}>
+                Scan first. Save when you're ready.
+              </strong>
+            </div>
+            <p style={{ color: 'var(--muted)', fontSize: '0.84rem', margin: 0, maxWidth: '540px', lineHeight: '1.5' }}>
+              Scan a product without creating an account. Sign in only if you want to save inspections and reports.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <div style={{
+              background: 'var(--sage-soft)',
+              color: 'var(--sage-deep)',
+              border: '1px solid rgba(93, 143, 111, 0.25)',
+              padding: '0.45rem 0.9rem',
+              borderRadius: '10px',
+              fontSize: '0.82rem',
+              fontWeight: 700
+            }}>
+              ✓ Continue as Guest
+            </div>
+
+            {onNavigateLogin && (
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={onNavigateLogin}
+                style={{ minHeight: '36px', padding: '0 14px', fontSize: '0.82rem' }}
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Logged-in Inspector Notification */}
+      {user && (
+        <div style={{
+          background: 'var(--panel-soft)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '0.75rem 1.25rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.82rem',
+          flexWrap: 'wrap',
+          gap: '0.5rem'
+        }}>
+          <div>
+            Logged in as <strong>{user.username}</strong> ({user.role || 'Inspector'}). Scans will be automatically saved to your inspection repository.
+          </div>
+          <span className="status-pill online" style={{ fontSize: '0.7rem' }}>
+            Autosave to Account
+          </span>
+        </div>
+      )}
 
       <div className="panel" style={{ padding: '24px' }}>
         

@@ -14,9 +14,14 @@ export async function checkHealth() {
   }
 }
 
-export async function scanImage(imageFile, barcode = null) {
+export async function scanImage(imageFile, barcode = null, options = {}) {
+  const { persist = true, inspector = null } = options;
   const formData = new FormData();
   formData.append('image', imageFile);
+  formData.append('persist', String(persist !== false));
+  if (inspector) {
+    formData.append('inspector', inspector);
+  }
   
   const cleanBarcode = barcode && typeof barcode === 'string' ? barcode.trim().replace(/\s+/g, '') : null;
   if (cleanBarcode) {
@@ -118,5 +123,22 @@ export function getUploadUrl(path) {
   if (!path) return '';
   if (path.startsWith('http')) return path;
   return `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+export async function saveScanRecord(scanData, inspector = 'Inspector') {
+  const response = await fetch(`${API_BASE_URL}/api/scans/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scan_id: scanData.scan_id,
+      scan: scanData,
+      inspector: inspector
+    })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to save scan record');
+  }
+  return data;
 }
 

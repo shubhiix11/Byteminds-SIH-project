@@ -8,9 +8,9 @@ const STATUS_COLOR_MAP = {
   NEEDS_REVIEW: '#d9a25d'
 };
 
-export default function RepositoryPage({ onViewScanResult, externalSearch = '' }) {
+export default function RepositoryPage({ user, onViewScanResult, externalSearch = '', onNavigateLogin, onStartScan }) {
   const [scans, setScans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(user));
   const [search, setSearch] = useState(externalSearch);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -24,6 +24,10 @@ export default function RepositoryPage({ onViewScanResult, externalSearch = '' }
   }, [externalSearch]);
 
   const loadScans = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const scanList = await fetchScans({ search, status: statusFilter });
@@ -37,7 +41,61 @@ export default function RepositoryPage({ onViewScanResult, externalSearch = '' }
 
   useEffect(() => {
     loadScans();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, user]);
+
+  if (!user) {
+    return (
+      <div style={{ maxWidth: '640px', margin: '3rem auto 0', padding: '0 1rem' }}>
+        <div className="panel" style={{ padding: '2.8rem 2rem', textAlign: 'center' }}>
+          <div style={{
+            width: '60px',
+            height: '60px',
+            borderRadius: '18px',
+            background: 'var(--sage-soft)',
+            color: 'var(--sage-deep)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1.25rem',
+            boxShadow: '0 6px 16px rgba(93, 143, 111, 0.15)'
+          }}>
+            <Database size={30} />
+          </div>
+
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', marginBottom: '0.5rem' }}>
+            Inspection history is available after signing in.
+          </h2>
+
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', lineHeight: '1.6', maxWidth: '480px', margin: '0 auto 1.8rem' }}>
+            Sign in with your Inspector ID to access permanent commodity records, audit trails, and certified inspection reports. Guest scans are processed in-memory and are not saved to the public repository.
+          </p>
+
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {onNavigateLogin && (
+              <button
+                type="button"
+                className="btn primary"
+                onClick={onNavigateLogin}
+                style={{ minHeight: '42px', padding: '0 22px' }}
+              >
+                <span>Sign In to Access Repository</span>
+              </button>
+            )}
+            {onStartScan && (
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={onStartScan}
+                style={{ minHeight: '42px', padding: '0 18px' }}
+              >
+                <span>Perform Guest Scan</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Group scans by product name to show aggregated commodity cards
   const groupedProducts = scans.reduce((acc, scan) => {
@@ -262,7 +320,7 @@ export default function RepositoryPage({ onViewScanResult, externalSearch = '' }
                     </div>
 
                     <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: '0.8rem' }}>
-                      Date: {scanItem.created_at?.substring(0, 10) || '2026-09-12'} • Inspector: {scanItem.inspector || 'Inspector Alpha'}
+                      Date: {scanItem.created_at?.substring(0, 10) || '2026-09-12'} • Inspector: {scanItem.inspector || user?.username || 'Inspector'}
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.75rem' }}>

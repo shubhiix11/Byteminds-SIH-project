@@ -175,8 +175,11 @@ def scan_image():
 
     inspection_date = request.form.get('inspection_date')
     form_barcode = request.form.get('barcode')
+    persist_val = request.form.get('persist', request.form.get('save_history', 'true'))
+    should_persist = str(persist_val).lower() not in ['false', '0', 'no']
     location = request.form.get('location', 'Inspector Terminal')
-    inspector = request.form.get('inspector', 'Inspector Alpha')
+    default_inspector = 'Inspector Alpha' if should_persist else 'Guest'
+    inspector = request.form.get('inspector', default_inspector)
     measurement_input = request.form.get('measurement_input')
 
     if measurement_input:
@@ -549,44 +552,51 @@ def scan_image():
         )
         report_url = f"/api/reports/{scan_id}"
 
-        # Step 8: Persist Scan Record into SQLite Database
-        db_scan_id = save_scan(
-            scan_id=scan_id,
-            filename=saved_filename,
-            file_path=file_path,
-            product_name=product_name,
-            brand=brand,
-            category="Packaged Food",
-            barcode=actual_barcode or "NOT_DETECTED",
-            manufacturer=mfg_name or "Unknown Manufacturer",
-            location=location,
-            inspector=inspector,
-            overall_status=compliance_result["overall_status"],
-            measurement_method=(measurement_input.get("method") if measurement_input else "not_available"),
-            extracted_facts=raw_facts,
-            product_enrichment=enrichment_result,
-            cross_check=cross_check_result,
-            rule_results=compliance_result["rule_results"],
-            summary_counts=compliance_result["summary"],
-            measurements=measurements,
-            annotations=annotations_metadata,
-            original_image_url=orig_url,
-            annotated_image_url=annotated_url,
-            report_path=pdf_path,
-            web_research=web_research_result,
-            openfoodfacts_status=off_result.get("status"),
-            openfoodfacts_product=off_result.get("product"),
-            openfoodfacts_source_url=off_result.get("source_url"),
-            openfoodfacts_retrieved_at=off_result.get("retrieved_at"),
-            status="COMPLETED"
-        )
+        # Step 8: Persist Scan Record into SQLite Database (only if authenticated / requested)
+        if should_persist:
+            db_scan_id = save_scan(
+                scan_id=scan_id,
+                filename=saved_filename,
+                file_path=file_path,
+                product_name=product_name,
+                brand=brand,
+                category="Packaged Food",
+                barcode=actual_barcode or "NOT_DETECTED",
+                manufacturer=mfg_name or "Unknown Manufacturer",
+                location=location,
+                inspector=inspector,
+                overall_status=compliance_result["overall_status"],
+                measurement_method=(measurement_input.get("method") if measurement_input else "not_available"),
+                extracted_facts=raw_facts,
+                product_enrichment=enrichment_result,
+                cross_check=cross_check_result,
+                rule_results=compliance_result["rule_results"],
+                summary_counts=compliance_result["summary"],
+                measurements=measurements,
+                annotations=annotations_metadata,
+                original_image_url=orig_url,
+                annotated_image_url=annotated_url,
+                report_path=pdf_path,
+                web_research=web_research_result,
+                openfoodfacts_status=off_result.get("status"),
+                openfoodfacts_product=off_result.get("product"),
+                openfoodfacts_source_url=off_result.get("source_url"),
+                openfoodfacts_retrieved_at=off_result.get("retrieved_at"),
+                status="COMPLETED"
+            )
+        else:
+            db_scan_id = scan_id
 
         scan_payload["report_url"] = report_url
+        scan_payload["is_guest"] = not should_persist
+        scan_payload["persisted"] = should_persist
 
         return jsonify({
             "success": True,
             "scan_id": db_scan_id,
             "report_url": report_url,
+            "is_guest": not should_persist,
+            "persisted": should_persist,
             **scan_payload
         }), 200
 
@@ -632,6 +642,74 @@ def get_openfoodfacts_endpoint(barcode):
             "barcode": barcode,
             "message": "Open Food Facts service is currently unavailable."
         }), 500
+
+@app.route('/api/scans/save', methods=['POST'])
+def save_guest_scan():
+    data = request.get_json() or {}
+    scan_id = data.get('scan_id')
+    if not scan_id:
+        return jsonify({"error": "scan_id is required"}), 400
+
+    inspector = data.get('inspector', 'Inspector Alpha')
+    location = data.get('location', 'Inspector Terminal')
+
+    existing = get_scan_by_id(scan_id)
+    if existing:
+        return jsonify({
+            "success": True,
+            "message": "Scan already saved",
+            "scan_id": scan_id
+        }), 200
+
+    scan_obj = data.get('scan', {})
+    pdf_filename = f"report_{scan_id}.pdf"
+    pdf_path = os.path.join(REPORTS_DIR, pdf_filename)
+    if not os.path.exists(pdf_path):
+        pdf_path = scan_obj.get('report_path')
+
+    filename = scan_obj.get('filename') or f"{scan_id}.jpg"
+    file_path = os.path.join(UPLOADS_DIR, filename)
+
+    declarations = scan_obj.get('detected_declarations') or scan_obj.get('declarations') or {}
+    mfg = declarations.get('manufacturer') or {}
+    mfg_name = mfg.get('name') if isinstance(mfg, dict) else (str(mfg) if mfg else None)
+
+    db_scan_id = save_scan(
+        scan_id=scan_id,
+        filename=filename,
+        file_path=file_path,
+        product_name=scan_obj.get('product_name') or declarations.get('commodity_name') or "Inspected Commodity",
+        brand=scan_obj.get('brand') or "Generic Brand",
+        category=scan_obj.get('category') or "Packaged Food",
+        barcode=scan_obj.get('barcode') or "NOT_DETECTED",
+        manufacturer=mfg_name or "Unknown Manufacturer",
+        location=location,
+        inspector=inspector,
+        overall_status=scan_obj.get('overall_status', 'NEEDS_REVIEW'),
+        measurement_method=scan_obj.get('measurements_method', 'not_available'),
+        extracted_facts=scan_obj.get('extracted_facts') or {},
+        product_enrichment=scan_obj.get('product_enrichment') or {},
+        cross_check=scan_obj.get('cross_check') or {},
+        rule_results=scan_obj.get('rule_results') or [],
+        summary_counts=scan_obj.get('summary') or {},
+        measurements=scan_obj.get('measurements') or [],
+        annotations=scan_obj.get('annotations') or [],
+        original_image_url=scan_obj.get('original_image_url') or scan_obj.get('image_url'),
+        annotated_image_url=scan_obj.get('annotated_image_url'),
+        report_path=pdf_path,
+        web_research=scan_obj.get('web_research') or {},
+        openfoodfacts_status=scan_obj.get('openfoodfacts_status') or scan_obj.get('openfoodfacts', {}).get('status'),
+        openfoodfacts_product=scan_obj.get('openfoodfacts_product') or scan_obj.get('openfoodfacts', {}).get('product'),
+        openfoodfacts_source_url=scan_obj.get('openfoodfacts_source_url') or scan_obj.get('openfoodfacts', {}).get('source_url'),
+        openfoodfacts_retrieved_at=scan_obj.get('openfoodfacts_retrieved_at') or scan_obj.get('openfoodfacts', {}).get('retrieved_at'),
+        status="COMPLETED"
+    )
+
+    return jsonify({
+        "success": True,
+        "scan_id": db_scan_id,
+        "message": f"Scan #{db_scan_id} saved successfully"
+    }), 200
 
 @app.route('/api/scans', methods=['GET'])
 def list_scans():

@@ -121,7 +121,37 @@ export function Topbar({ user, onLogout, setActiveTab, searchQuery, onSearchChan
           <Bell size={16} />
         </button>
 
-        {user ? (
+        {!user ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                color: 'var(--sage-deep)',
+                background: 'var(--sage-soft)',
+                border: '1px solid rgba(93, 143, 111, 0.25)',
+                padding: '0.25rem 0.65rem',
+                borderRadius: '9999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+              title="Operating in Guest Mode. Scans are processed in memory and not saved to account history."
+            >
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--sage-deep)' }}></span>
+              Guest Mode
+            </span>
+            <button
+              className="btn secondary"
+              onClick={() => setActiveTab('login')}
+              type="button"
+              style={{ minHeight: '34px', padding: '0 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <LogIn size={14} />
+              <span>Sign In</span>
+            </button>
+          </div>
+        ) : (
           <button
             className="profile-btn"
             onClick={onLogout}
@@ -130,16 +160,6 @@ export function Topbar({ user, onLogout, setActiveTab, searchQuery, onSearchChan
           >
             <span className="profile-avatar">{user.username?.substring(0, 2).toUpperCase() || 'IA'}</span>
             <span>{user.username}</span>
-          </button>
-        ) : (
-          <button
-            className="btn secondary"
-            onClick={() => setActiveTab('login')}
-            type="button"
-            style={{ minHeight: '36px', padding: '0 12px', fontSize: '0.82rem' }}
-          >
-            <LogIn size={15} />
-            <span>Inspector Login</span>
           </button>
         )}
       </div>

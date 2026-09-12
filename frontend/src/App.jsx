@@ -8,10 +8,25 @@ import DashboardPage from './pages/DashboardPage';
 import { checkHealth } from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard'); // Default to dashboard/home view
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('labelsure_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [activeTab, setActiveTab] = useState(() => {
+    // Default to scan page in guest mode, or dashboard if already logged in
+    try {
+      const saved = localStorage.getItem('labelsure_user');
+      return saved ? 'dashboard' : 'scan';
+    } catch {
+      return 'scan';
+    }
+  });
   const [isConnected, setIsConnected] = useState(false);
   const [healthData, setHealthData] = useState({ connected: false });
-  const [user, setUser] = useState({ username: 'Inspector Alpha', role: 'Legal Metrology Inspector' });
   const [scanResult, setScanResult] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -45,12 +60,27 @@ export default function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    setActiveTab('dashboard');
+    try {
+      localStorage.setItem('labelsure_user', JSON.stringify(userData));
+    } catch (e) {
+      console.warn('Could not persist login session:', e);
+    }
+    // Return to results if currently reviewing a scan, otherwise go to dashboard
+    if (scanResult && activeTab === 'results') {
+      setActiveTab('results');
+    } else {
+      setActiveTab('dashboard');
+    }
   };
 
   const handleLogout = () => {
     setUser(null);
-    setActiveTab('login');
+    try {
+      localStorage.removeItem('labelsure_user');
+    } catch (e) {
+      console.warn('Could not clear login session:', e);
+    }
+    setActiveTab('scan');
   };
 
   return (
@@ -77,31 +107,46 @@ export default function App() {
         />
 
         {activeTab === 'login' && (
-          <LoginPage onLoginSuccess={handleLoginSuccess} />
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onContinueAsGuest={() => setActiveTab('scan')}
+          />
         )}
 
         {activeTab === 'dashboard' && (
           <DashboardPage
+            user={user}
             onViewScanResult={handleViewScanResult}
             onStartScan={() => setActiveTab('scan')}
+            onNavigateLogin={() => setActiveTab('login')}
           />
         )}
 
         {activeTab === 'scan' && (
-          <ScanPage onScanComplete={handleScanComplete} />
+          <ScanPage
+            user={user}
+            onScanComplete={handleScanComplete}
+            onNavigateLogin={() => setActiveTab('login')}
+          />
         )}
 
         {activeTab === 'results' && (
           <ResultsPage
+            user={user}
             scanResult={scanResult}
             onNewScan={() => setActiveTab('scan')}
+            onNavigateLogin={() => setActiveTab('login')}
+            onScanSaved={(savedScan) => setScanResult(savedScan)}
           />
         )}
 
         {activeTab === 'repository' && (
           <RepositoryPage
+            user={user}
             onViewScanResult={handleViewScanResult}
             externalSearch={searchQuery}
+            onNavigateLogin={() => setActiveTab('login')}
+            onStartScan={() => setActiveTab('scan')}
           />
         )}
       </main>
