@@ -1,121 +1,148 @@
 import React from 'react';
-import { ShieldCheck, ScanLine, LogIn, FileText, Database, LayoutDashboard } from 'lucide-react';
+import { ShieldCheck, LayoutDashboard, Camera, Database, FileText, LogIn, LogOut, Activity, Bell } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, isConnected, healthData, scanResult, user, onLogout }) {
+export default function Navbar({
+  activeTab,
+  setActiveTab,
+  isConnected,
+  healthData,
+  scanResult,
+  user,
+  onLogout,
+  searchQuery = '',
+  onSearchChange = () => {}
+}) {
   const ocrDetections = scanResult?.ocr_detections?.length ?? scanResult?.debug?.["LOCAL OCR"]?.detections_count ?? null;
   const ocrExecuted = Boolean(scanResult);
 
   return (
-    <nav className="navbar">
-      <div className="nav-brand" onClick={() => setActiveTab('scan')} style={{ cursor: 'pointer' }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
-          padding: '0.5rem',
-          borderRadius: '10px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#0a0e17'
-        }}>
-          <ShieldCheck size={24} strokeWidth={2.5} />
-        </div>
-        <div>
+    <>
+      {/* Sidebar Navigation matching frontend-design/index.html */}
+      <aside className="sidebar">
+        <div className="logo" onClick={() => setActiveTab('dashboard')} title="LabelSure Platform">
+          <span className="logo-badge">
+            <ShieldCheck size={18} strokeWidth={2.6} />
+          </span>
           <span>LabelSure</span>
-          <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-            LEGAL METROLOGY PLATFORM
-          </div>
         </div>
-      </div>
 
-      <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        {/* Section 19 & 17 Status Badges */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginRight: '0.5rem' }}>
-          {/* Backend Status */}
-          <div className={`status-pill ${isConnected ? 'online' : 'offline'}`} title="Backend API">
+        <nav className="nav" aria-label="Sidebar navigation">
+          <button
+            className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+            type="button"
+          >
+            <LayoutDashboard size={18} />
+            <span>Dashboard</span>
+          </button>
+
+          <button
+            className={`nav-link ${activeTab === 'scan' ? 'active' : ''}`}
+            onClick={() => setActiveTab('scan')}
+            type="button"
+          >
+            <Camera size={18} />
+            <span>Scan Product</span>
+          </button>
+
+          <button
+            className={`nav-link ${activeTab === 'results' ? 'active' : ''}`}
+            onClick={() => setActiveTab('results')}
+            type="button"
+          >
+            <FileText size={18} />
+            <span>Scan Report</span>
+            {scanResult && (
+              <span className="chip" style={{ marginLeft: 'auto', fontSize: '0.62rem', minHeight: '20px', padding: '0 6px' }}>
+                Active
+              </span>
+            )}
+          </button>
+
+          <button
+            className={`nav-link ${activeTab === 'repository' ? 'active' : ''}`}
+            onClick={() => setActiveTab('repository')}
+            type="button"
+          >
+            <Database size={18} />
+            <span>Repository</span>
+          </button>
+        </nav>
+
+        {/* Backend & Engine Health Badges */}
+        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div className={`status-pill ${isConnected ? 'online' : 'offline'}`} style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.72rem' }} title="Flask Backend API">
             <span className="pulse-dot"></span>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>{isConnected ? 'Backend: CONNECTED' : 'Backend: OFFLINE'}</span>
+            <span>{isConnected ? 'Backend: CONNECTED' : 'Backend: OFFLINE'}</span>
           </div>
 
-          {/* OCR Engine Status (Section 17) */}
           <div
             className="status-pill online"
             style={{
-              background: (!ocrExecuted || ocrDetections > 0) ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.15)',
-              color: (!ocrExecuted || ocrDetections > 0) ? 'var(--accent-emerald)' : 'var(--accent-amber)',
-              border: `1px solid ${(!ocrExecuted || ocrDetections > 0) ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.4)'}`
+              width: '100%',
+              justifyContent: 'flex-start',
+              fontSize: '0.7rem',
+              background: (!ocrExecuted || ocrDetections > 0) ? 'var(--sage-soft)' : 'var(--terracotta-soft)',
+              color: (!ocrExecuted || ocrDetections > 0) ? 'var(--sage-deep)' : '#b55246'
             }}
-            title={ocrExecuted && ocrDetections === 0 ? "OCR executed but no reliable text was extracted." : "Primary Local OCR Engine"}
+            title="Local Tesseract OCR Engine"
           >
-            <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>
-              {ocrExecuted ? (
-                ocrDetections > 0 ? (
-                  `OCR: TESSERACT | Status: ACTIVE | Executed: YES | Detections: ${ocrDetections}`
-                ) : (
-                  "OCR executed but no reliable text was extracted."
-                )
-              ) : (
-                'OCR: TESSERACT ACTIVE (LOCAL)'
-              )}
+            <span>
+              {ocrExecuted ? (ocrDetections > 0 ? `OCR: ${ocrDetections} Detections` : 'OCR: No text found') : 'OCR: Tesseract (Local)'}
             </span>
           </div>
 
-          {/* OpenAI Vision Status */}
-          <div className="status-pill" style={{
-            background: healthData?.api_key_configured === 'YES' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(156, 163, 175, 0.12)',
-            color: healthData?.api_key_configured === 'YES' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-            border: `1px solid ${healthData?.api_key_configured === 'YES' ? 'rgba(56, 189, 248, 0.3)' : 'rgba(156, 163, 175, 0.3)'}`
-          }} title="Optional OpenAI Vision Layer">
-            <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>OpenAI Vision: {healthData?.api_key_configured === 'YES' ? 'AVAILABLE' : 'UNAVAILABLE'}</span>
-          </div>
-
-          {/* Barcode Decoder Status */}
-          <div className="status-pill online" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--accent-emerald)', border: '1px solid rgba(16, 185, 129, 0.3)' }} title="Pixel Barcode Engine">
-            <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>Barcode: READY</span>
+          <div
+            className="status-pill online"
+            style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.7rem', background: 'var(--sage-soft)', color: 'var(--sage-deep)' }}
+            title="Open Food Facts API v3"
+          >
+            <span>OFF: API v3 Active</span>
           </div>
         </div>
+      </aside>
+    </>
+  );
+}
 
-        <button
-          className={`nav-button ${activeTab === 'scan' ? 'active' : ''}`}
-          onClick={() => setActiveTab('scan')}
-        >
-          <ScanLine size={18} />
-          <span>Scan Label</span>
-        </button>
+export function Topbar({ user, onLogout, setActiveTab, searchQuery, onSearchChange }) {
+  return (
+    <header className="topbar">
+      <input
+        className="search-box"
+        type="text"
+        placeholder="Search commodity, brand or label..."
+        value={searchQuery}
+        onChange={(e) => onSearchChange(e.target.value)}
+      />
 
-        <button
-          className={`nav-button ${activeTab === 'repository' ? 'active' : ''}`}
-          onClick={() => setActiveTab('repository')}
-        >
-          <Database size={18} />
-          <span>Repository</span>
-        </button>
-
-        <button
-          className={`nav-button ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          <LayoutDashboard size={18} />
-          <span>Dashboard</span>
+      <div className="topbar-actions">
+        <button className="icon-btn" type="button" aria-label="Notifications" title="System Notifications">
+          <Bell size={16} />
         </button>
 
         {user ? (
           <button
-            className="nav-button"
+            className="profile-btn"
             onClick={onLogout}
-            style={{ color: 'var(--accent-rose)' }}
+            title="Click to sign out"
+            type="button"
           >
-            <span>Logout ({user.username})</span>
+            <span className="profile-avatar">{user.username?.substring(0, 2).toUpperCase() || 'IA'}</span>
+            <span>{user.username}</span>
           </button>
         ) : (
           <button
-            className={`nav-button ${activeTab === 'login' ? 'active' : ''}`}
+            className="btn secondary"
             onClick={() => setActiveTab('login')}
+            type="button"
+            style={{ minHeight: '36px', padding: '0 12px', fontSize: '0.82rem' }}
           >
-            <LogIn size={18} />
+            <LogIn size={15} />
             <span>Inspector Login</span>
           </button>
         )}
       </div>
-    </nav>
+    </header>
   );
 }

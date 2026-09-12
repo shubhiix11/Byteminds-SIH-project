@@ -1,0 +1,260 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LabelSure Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <aside class="sidebar">
+        <div class="logo">LabelSure</div>
+
+        <nav class="nav" aria-label="Sidebar navigation">
+          <button class="nav-link active" type="button"><i class="fa-solid fa-house"></i> Home</button>
+          <button class="nav-link" type="button"><i class="fa-solid fa-camera"></i> Scan</button>
+          <button class="nav-link" type="button"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
+          <button class="nav-link" type="button"><i class="fa-solid fa-chart-column"></i> Reports</button>
+          <button class="nav-link" type="button"><i class="fa-solid fa-gear"></i> Settings</button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <input
+            id="searchInput"
+            class="search-box"
+            type="text"
+            placeholder="Search product, brand or label..."
+          />
+
+          <div class="topbar-actions">
+            <button class="icon-btn" type="button" aria-label="Notifications">
+              <i class="fa-solid fa-bell"></i>
+            </button>
+            <button class="profile-btn" type="button" aria-label="User profile">
+              <span class="profile-avatar">AK</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="hero">
+          <div class="hero-text">
+            <p class="eyebrow">AI-powered label verification</p>
+            <h1>Scan. Verify. Comply.</h1>
+            <p>
+              LabelSure helps businesses validate packaged commodities against Legal
+              Metrology (Packaged Commodities) Rules, 2011 by scanning products,
+              labels and package images using AI-driven verification.
+            </p>
+
+            <div class="hero-actions">
+              <button id="scanButton" class="btn primary" type="button">
+                <i class="fa-solid fa-camera"></i> Scan Product
+              </button>
+              <button class="btn secondary" type="button">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> View Reports
+              </button>
+            </div>
+          </div>
+
+          <div class="photo-box-wrap">
+            <div class="photo-box">
+              <div class="product-illustration">
+                <div class="box-top"></div>
+                <div class="box-body"></div>
+              </div>
+            </div>
+            <div class="compliant-tag">Compliant</div>
+          </div>
+        </section>
+
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <div class="kpi-head">
+              <span>Daily scans</span>
+              <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+            <div class="kpi-value">2.4K</div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-head">
+              <span>Approval rate</span>
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <div class="kpi-value">93%</div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-head">
+              <span>Legal flags</span>
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="kpi-value">184</div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-head">
+              <span>Uptime</span>
+              <i class="fa-solid fa-wifi"></i>
+            </div>
+            <div class="kpi-value">96%</div>
+          </article>
+        </section>
+
+        <section class="analytics">
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <small>Compliance trend</small>
+                <h3>Compliance Rate</h3>
+              </div>
+              <span class="chip">+5% this week</span>
+            </div>
+
+            <div class="chart-box">
+              <div class="chart-metrics">
+                <div>
+                  <span>Current</span>
+                  <strong>93%</strong>
+                </div>
+                <div>
+                  <span>Target</span>
+                  <strong>96%</strong>
+                </div>
+              </div>
+
+              <svg viewBox="0 0 420 170" class="chart-svg" aria-label="Compliance chart">
+                <defs>
+                  <linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#8dbb9e" stop-opacity="0.38" />
+                    <stop offset="100%" stop-color="#8dbb9e" stop-opacity="0.08" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </article>
+
+          <article class="panel brands-panel">
+            <div class="panel-head">
+              <div>
+                <small>Current watchlist</small>
+                <h3>Top Non-Compliant Brands</h3>
+              </div>
+            </div>
+
+            <div class="brand-list">
+              <div class="brand-item">
+                <div class="brand-name-row">
+                  <span class="rank">1</span>
+                  <span>Aarav Foods</span>
+                </div>
+                <span class="brand-score">82%</span>
+                <div class="progress"><span style="width: 82%"></span></div>
+              </div>
+
+              <div class="brand-item">
+                <div class="brand-name-row">
+                  <span class="rank">2</span>
+                  <span>BrightPick</span>
+                </div>
+                <span class="brand-score">69%</span>
+                <div class="progress"><span style="width: 69%"></span></div>
+              </div>
+
+              <div class="brand-item">
+                <div class="brand-name-row">
+                  <span class="rank">3</span>
+                  <span>NatureNext</span>
+                </div>
+                <span class="brand-score">63%</span>
+                <div class="progress"><span style="width: 63%"></span></div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel scans-panel">
+          <div class="panel-head scans-head">
+            <div>
+              <small>Latest activity</small>
+              <h3>Recent Scans</h3>
+            </div>
+            <button class="ghost-btn" type="button">View all</button>
+          </div>
+
+          <div class="scan-list" id="scanList">
+            <article class="scan-item" data-product="Sunrise Harvest Granola 500g">
+              <div class="scan-thumb thumb-one"></div>
+              <div class="scan-info">
+                <h4>Sunrise Harvest Granola</h4>
+                <p>500 g • Batch A2123</p>
+              </div>
+              <span class="status ok">OK</span>
+            </article>
+
+            <article class="scan-item" data-product="ZenBite Choco Bites 250g">
+              <div class="scan-thumb thumb-two"></div>
+              <div class="scan-info">
+                <h4>ZenBite Choco Bites</h4>
+                <p>250 g • Batch C781</p>
+              </div>
+              <span class="status flag">FLAG</span>
+            </article>
+
+            <article class="scan-item" data-product="EverGreen Coconut Oil 1L">
+              <div class="scan-thumb thumb-three"></div>
+              <div class="scan-info">
+                <h4>EverGreen Coconut Oil</h4>
+                <p>1 L • Batch D440</p>
+              </div>
+              <span class="status ok">OK</span>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="scanModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close="true"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+        <div class="modal-header">
+          <div>
+            <small>Scan workflow</small>
+            <h3 id="scanTitle">Product Scanner</h3>
+          </div>
+          <button class="close-btn" type="button" aria-label="Close modal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="camera-box">
+            <div class="camera-frame"></div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn primary" type="button"><i class="fa-solid fa-camera"></i> Capture</button>
+            <button class="btn secondary" type="button"><i class="fa-solid fa-upload"></i> Upload Label</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

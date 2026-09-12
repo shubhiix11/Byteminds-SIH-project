@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Package, Tag, Calendar, Building, PhoneCall, Globe, Code2, LayoutGrid, CheckCircle2, XCircle, AlertTriangle, HelpCircle, ArrowLeft, Info, FileText, Barcode, Check, AlertCircle, Layers, Eye, ExternalLink, Search, ChevronDown, ChevronUp, Apple, ShoppingBag } from 'lucide-react';
-import { getUploadUrl } from '../services/api';
+import { getUploadUrl, getReportDownloadUrl } from '../services/api';
 
 const STATUS_COLOR_MAP = {
   PASS: '#10b981',
@@ -136,13 +136,13 @@ export default function ResultsPage({ scanResult, onNewScan }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-surface)', padding: '0.3rem', borderRadius: '12px', border: '1px solid var(--border-color)', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--panel)', padding: '0.35rem', borderRadius: '14px', border: '1px solid var(--border)', alignItems: 'center' }}>
           <a
-            href={`http://localhost:5001/api/reports/${scan_id}`}
+            href={getReportDownloadUrl(scan_id)}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-primary"
-            style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem', textDecoration: 'none' }}
+            className="btn primary"
+            style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem', textDecoration: 'none', minHeight: '36px' }}
           >
             <span>Download PDF Report</span>
           </a>
@@ -227,53 +227,55 @@ export default function ResultsPage({ scanResult, onNewScan }) {
         </div>
       </div>
 
-      {/* Legal Safety Disclaimer */}
-      <div style={{
-        background: 'rgba(59, 130, 246, 0.1)',
-        border: '1px solid rgba(59, 130, 246, 0.25)',
-        borderRadius: '12px',
-        padding: '0.85rem 1.25rem',
-        marginBottom: '1.5rem',
-        fontSize: '0.82rem',
-        color: '#93c5fd',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem'
-      }}>
-        <Info size={20} style={{ flexShrink: 0 }} />
-        <span>{disclaimer || "AI-assisted compliance screening based on implemented Legal Metrology packaged-commodity requirements. Not an official government certification system."}</span>
-      </div>
+      {/* Legal Safety Notice & Alert Box from consumer-safety.html */}
+      {overall_status === 'NON_COMPLIANT' ? (
+        <div className="alert-box">
+          <div>
+            <strong>Action Needed: Non-Compliant Declarations Detected</strong>
+            <span>Package label exhibits {summary?.failed || 1} rule failure(s) under Legal Metrology (Packaged Commodities) Rules, 2011.</span>
+          </div>
+          <div className="alert-tag">Action Needed</div>
+        </div>
+      ) : overall_status === 'COMPLIANT' ? (
+        <div className="alert-box" style={{ background: 'linear-gradient(135deg, #f1f8f3, #ffffff)', borderColor: 'rgba(93, 143, 111, 0.3)' }}>
+          <div>
+            <strong style={{ color: 'var(--sage-deep)' }}>All Mandatory Declarations Compliant</strong>
+            <span>Commodity label satisfies evaluated statutory declaration requirements.</span>
+          </div>
+          <div className="alert-tag" style={{ background: 'var(--sage-soft)', color: 'var(--sage-deep)' }}>Safe / Compliant</div>
+        </div>
+      ) : (
+        <div className="alert-box" style={{ background: 'linear-gradient(135deg, #fdf8f0, #ffffff)', borderColor: 'rgba(217, 162, 93, 0.4)' }}>
+          <div>
+            <strong style={{ color: '#b57930' }}>Manual Review Suggested</strong>
+            <span>Some declarations require additional physical package inspection for full verification.</span>
+          </div>
+          <div className="alert-tag" style={{ background: '#fdf1dc', color: '#b57930' }}>Review</div>
+        </div>
+      )}
 
       {/* Summary Statistics Bar */}
       {summary && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-          gap: '1rem',
-          marginBottom: '1.5rem'
-        }}>
-          <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Rules Checked</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{summary.rules_checked}</div>
+        <div className="kpi-grid" style={{ marginBottom: '1.5rem' }}>
+          <div className="kpi-card" style={{ padding: '1rem', textAlign: 'center' }}>
+            <div className="kpi-head" style={{ justifyContent: 'center', marginBottom: '0.35rem' }}>Rules Checked</div>
+            <div className="kpi-value" style={{ fontSize: '1.6rem' }}>{summary.rules_checked}</div>
           </div>
-          <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', textAlign: 'center', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--accent-emerald)', fontWeight: 700, textTransform: 'uppercase' }}>Passed</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>{summary.passed}</div>
+          <div className="kpi-card" style={{ padding: '1rem', textAlign: 'center', borderColor: 'rgba(93, 143, 111, 0.3)' }}>
+            <div className="kpi-head" style={{ justifyContent: 'center', marginBottom: '0.35rem', color: 'var(--sage-deep)' }}>Passed</div>
+            <div className="kpi-value" style={{ fontSize: '1.6rem', color: 'var(--sage-deep)' }}>{summary.passed}</div>
           </div>
-          <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', textAlign: 'center', borderColor: 'rgba(244, 63, 94, 0.3)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--accent-rose)', fontWeight: 700, textTransform: 'uppercase' }}>Failed</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-rose)' }}>{summary.failed}</div>
+          <div className="kpi-card" style={{ padding: '1rem', textAlign: 'center', borderColor: 'rgba(213, 155, 130, 0.4)' }}>
+            <div className="kpi-head" style={{ justifyContent: 'center', marginBottom: '0.35rem', color: '#b55246' }}>Failed</div>
+            <div className="kpi-value" style={{ fontSize: '1.6rem', color: '#b55246' }}>{summary.failed}</div>
           </div>
-          <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', textAlign: 'center', borderColor: 'rgba(96, 165, 250, 0.3)' }}>
-            <div style={{ fontSize: '0.72rem', color: '#60a5fa', fontWeight: 700, textTransform: 'uppercase' }}>Not Verifiable</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#60a5fa' }}>{summary.not_verifiable}</div>
-          </div>
-          <div className="glass-panel" style={{ padding: '0.9rem 1.1rem', textAlign: 'center', borderColor: 'rgba(156, 163, 175, 0.3)' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Not Applicable</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-muted)' }}>{summary.not_applicable}</div>
+          <div className="kpi-card" style={{ padding: '1rem', textAlign: 'center', borderColor: 'rgba(217, 162, 93, 0.4)' }}>
+            <div className="kpi-head" style={{ justifyContent: 'center', marginBottom: '0.35rem', color: '#d9a25d' }}>Not Verifiable</div>
+            <div className="kpi-value" style={{ fontSize: '1.6rem', color: '#d9a25d' }}>{summary.not_verifiable}</div>
           </div>
         </div>
       )}
+
 
       {/* Main Layout Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '1.5rem' }}>

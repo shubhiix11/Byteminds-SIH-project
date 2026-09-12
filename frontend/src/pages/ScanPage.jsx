@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Sparkles, X, AlertCircle } from 'lucide-react';
+import { Camera, Sparkles, X, AlertTriangle, FileImage, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { scanImage } from '../services/api';
 
 const SCAN_STEPS = [
@@ -23,7 +23,7 @@ export default function ScanPage({ onScanComplete }) {
   const handleFileSelect = (file) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file (JPG, PNG, WEBP, etc.)');
+      setError('Please select a valid image file (JPG, PNG, WEBP, TIFF, etc.)');
       return;
     }
     setError(null);
@@ -70,138 +70,170 @@ export default function ScanPage({ onScanComplete }) {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '800px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-        <h1 className="title-gradient" style={{ fontSize: '2.2rem', fontWeight: 800 }}>
-          Legal Metrology Commodity Scanner
+    <div style={{ maxWidth: '880px', margin: '0 auto' }}>
+      {/* Header Eyebrow & Title */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <span className="eyebrow">Commodity Label Verification</span>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', margin: '4px 0 8px' }}>
+          Scan & Verify Legal Metrology Compliance
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>
-          Upload packaged commodity label image to extract declarations, verify legal rules & measure evidence.
+        <p style={{ color: 'var(--muted)', fontSize: '0.94rem', lineHeight: '1.6' }}>
+          Upload packaged commodity package images to extract mandatory declarations, verify Legal Metrology (Packaged Commodities) Rules, and corroborate with Open Food Facts.
         </p>
       </div>
 
-      <div className="glass-panel" style={{ padding: '2rem' }}>
+      <div className="panel" style={{ padding: '24px' }}>
         {!selectedFile ? (
-          <div
-            className="dropzone"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])}
-              accept="image/*"
-              style={{ display: 'none' }}
-            />
-            <div style={{
-              display: 'inline-flex',
-              padding: '1.2rem',
-              borderRadius: '20px',
-              background: 'rgba(0, 242, 254, 0.1)',
-              color: 'var(--accent-cyan)',
-              marginBottom: '1rem'
-            }}>
-              <UploadCloud size={44} />
+          <div>
+            {/* Viewfinder Dropzone */}
+            <div
+              className="dropzone"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{ minHeight: '340px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '20px',
+                background: 'var(--sage-soft)',
+                color: 'var(--sage-deep)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1.2rem',
+                boxShadow: '0 8px 16px rgba(93, 143, 111, 0.15)'
+              }}>
+                <Camera size={32} />
+              </div>
+
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text)', marginBottom: '0.4rem' }}>
+                Drag & Drop Package Label Image
+              </h3>
+              <p style={{ color: 'var(--muted)', fontSize: '0.88rem', maxWidth: '420px', marginBottom: '1.4rem' }}>
+                Supports JPG, PNG, WEBP, TIFF images up to 10MB. Our local OCR pipeline automatically analyzes declarations, fonts, and barcodes.
+              </p>
+
+              <button className="btn secondary" type="button" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+                <FileImage size={16} />
+                <span>Browse Image Files</span>
+              </button>
             </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.4rem' }}>
-              Drag & Drop Package Label Image
-            </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              Supports JPG, PNG, WEBP, TIFF images up to 10MB
-            </p>
-            <button className="btn-secondary" style={{ marginTop: '1.5rem' }}>
-              Browse Image Files
-            </button>
           </div>
         ) : (
           <div>
-            <div style={{
-              position: 'relative',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              background: 'rgba(0,0,0,0.4)',
-              border: '1px solid var(--border-color)',
-              marginBottom: '1.5rem',
-              maxHeight: '400px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <img
-                src={previewUrl}
-                alt="Selected Package Label"
-                style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain' }}
-              />
+            {/* Camera Stage Viewfinder (matching frontend-design/mobile-camera.html) */}
+            <div className="stage" style={{ marginBottom: '1.5rem', maxHeight: '440px' }}>
+              <div className="tag">
+                {isScanning ? 'Analyzing Label' : 'Ready for Inspection'}
+              </div>
+
+              <div className="label-box">
+                <img
+                  src={previewUrl}
+                  alt="Selected Package Label"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '16px' }}
+                />
+              </div>
+
+              {isScanning && <div className="scan-line"></div>}
+
+              <div className="scan-cards">
+                <div className="scan-pill">
+                  {selectedFile.name.length > 25 ? `${selectedFile.name.substring(0, 22)}...` : selectedFile.name}
+                </div>
+                <div className="scan-pill">
+                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                </div>
+              </div>
+
               <button
                 onClick={clearSelection}
                 disabled={isScanning}
+                aria-label="Remove image"
                 style={{
                   position: 'absolute',
-                  top: '1rem',
-                  right: '1rem',
-                  background: 'rgba(0,0,0,0.75)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  color: 'white',
+                  top: '14px',
+                  right: '14px',
+                  background: 'rgba(255, 255, 255, 0.85)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
                   borderRadius: '50%',
                   width: '36px',
                   height: '36px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  zIndex: 10
                 }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            {/* Progress Step Banner when Scanning */}
+            {/* Scanning Progress Banner */}
             {isScanning && (
               <div style={{
-                background: 'rgba(0, 242, 254, 0.1)',
-                border: '1px solid rgba(0, 242, 254, 0.3)',
-                borderRadius: '12px',
-                padding: '1rem',
+                background: 'rgba(122, 167, 126, 0.12)',
+                border: '1px solid rgba(122, 167, 126, 0.3)',
+                borderRadius: '16px',
+                padding: '1.2rem',
                 marginBottom: '1.5rem',
                 textAlign: 'center'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <div className="spinner" style={{ width: '22px', height: '22px' }}></div>
-                  <span style={{ fontWeight: 700, color: 'var(--accent-cyan)', fontSize: '0.95rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
+                  <div className="spinner"></div>
+                  <span style={{ fontWeight: 800, color: 'var(--sage-deep)', fontSize: '0.95rem' }}>
                     {SCAN_STEPS[scanStepIndex]}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Step {scanStepIndex + 1} of {SCAN_STEPS.length}
+                <div style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 600 }}>
+                  Step {scanStepIndex + 1} of {SCAN_STEPS.length} • Deterministic Metrology Engine
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Actions Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
-                <p style={{ fontSize: '0.95rem', fontWeight: 700 }}>{selectedFile.name}</p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                </p>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Selected Commodity File</span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800 }}>{selectedFile.name}</div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button className="btn-secondary" onClick={clearSelection} disabled={isScanning}>
-                  Choose Different Image
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  className="btn secondary"
+                  onClick={clearSelection}
+                  disabled={isScanning}
+                  type="button"
+                >
+                  Change Image
                 </button>
 
                 <button
-                  className="btn-primary"
+                  className="btn primary"
                   onClick={handleUploadAndScan}
                   disabled={isScanning}
+                  type="button"
                 >
                   {isScanning ? (
-                    <span>Analyzing Package...</span>
+                    <>
+                      <div className="spinner" style={{ width: '16px', height: '16px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#ffffff' }}></div>
+                      <span>Analyzing Package...</span>
+                    </>
                   ) : (
                     <>
-                      <Sparkles size={18} />
+                      <Sparkles size={17} />
                       <span>Process & Verify Compliance</span>
                     </>
                   )}
@@ -211,21 +243,14 @@ export default function ScanPage({ onScanComplete }) {
           </div>
         )}
 
+        {/* Error Notice */}
         {error && (
-          <div style={{
-            marginTop: '1.5rem',
-            background: 'rgba(244, 63, 94, 0.15)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
-            borderRadius: '12px',
-            padding: '1rem',
-            color: 'var(--accent-rose)',
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.6rem'
-          }}>
-            <AlertCircle size={20} />
-            <span>{error}</span>
+          <div className="alert-box" style={{ marginTop: '1.5rem' }}>
+            <div>
+              <strong>Inspection Request Error</strong>
+              <span>{error}</span>
+            </div>
+            <div className="alert-tag">Action Needed</div>
           </div>
         )}
       </div>

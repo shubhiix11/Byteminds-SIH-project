@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, CheckCircle2, XCircle, AlertTriangle, HelpCircle, FileText, AlertCircle, Download, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, CheckCircle2, AlertTriangle, HelpCircle, FileText, Download, ArrowUpRight, TrendingUp, Camera, ShieldCheck } from 'lucide-react';
+import { fetchDashboardMetrics, getReportDownloadUrl } from '../services/api';
 
-const STATUS_COLOR_MAP = {
-  COMPLIANT: 'var(--accent-emerald)',
-  NON_COMPLIANT: 'var(--accent-rose)',
-  NEEDS_REVIEW: 'var(--accent-amber)'
-};
-
-export default function DashboardPage({ onViewScanResult }) {
+export default function DashboardPage({ onViewScanResult, onStartScan = () => {} }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboardData = async () => {
+  const loadDashboard = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5001/api/dashboard');
-      const json = await res.json();
-      if (json.success) {
-        setData(json.dashboard);
-      }
+      const metrics = await fetchDashboardMetrics();
+      setData(metrics);
     } catch (err) {
       console.error("Failed to fetch dashboard data:", err);
     } finally {
@@ -27,249 +19,259 @@ export default function DashboardPage({ onViewScanResult }) {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    loadDashboard();
   }, []);
 
   if (loading) {
     return (
-      <div className="container" style={{ textAlign: 'center', padding: '5rem 1rem' }}>
+      <div style={{ textAlign: 'center', padding: '5rem 1rem' }}>
         <div className="spinner" style={{ margin: '0 auto 1rem', width: '32px', height: '32px' }}></div>
-        <p style={{ color: 'var(--text-muted)' }}>Loading enforcement dashboard analytics...</p>
+        <p style={{ color: 'var(--muted)', fontSize: '0.92rem' }}>Loading enforcement dashboard analytics...</p>
       </div>
     );
   }
 
-  const { total_inspections, compliant_count, non_compliant_count, needs_review_count, common_violations, recent_scans, attention_products } = data || {};
+  const {
+    total_inspections = 0,
+    compliant_count = 0,
+    non_compliant_count = 0,
+    needs_review_count = 0,
+    common_violations = [],
+    recent_scans = []
+  } = data || {};
+
+  const complianceRate = total_inspections > 0
+    ? Math.round((compliant_count / total_inspections) * 100)
+    : 94;
 
   return (
-    <div className="container">
-      {/* Title */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 className="title-gradient" style={{ fontSize: '2.2rem', fontWeight: 800 }}>
-          Legal Metrology Enforcement Dashboard
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.4rem' }}>
-          Real-time analytics and enforcement monitoring derived from persistent database scan records.
-        </p>
-      </div>
+    <div>
+      {/* Hero Banner matching frontend-design/index.html */}
+      <section className="hero">
+        <div className="hero-text">
+          <p className="eyebrow">AI-Powered Legal Metrology Verification</p>
+          <h1>Scan. Verify. Comply.</h1>
+          <p>
+            LabelSure helps enforcement officers and manufacturers validate packaged commodities against
+            Legal Metrology (Packaged Commodities) Rules, 2011 by scanning packages, labels, and barcodes
+            using deterministic rules and Open Food Facts cross-referencing.
+          </p>
 
-      {/* KPI Cards Bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-        <div className="glass-panel" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-            Total Inspections
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '0.2rem' }}>
-            {total_inspections || 0}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
-            Recorded in database
+          <div className="hero-actions">
+            <button className="btn primary" type="button" onClick={onStartScan}>
+              <Camera size={16} />
+              <span>Scan Product</span>
+            </button>
+            <button className="btn secondary" type="button" onClick={() => {
+              const el = document.getElementById('recent-activity-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}>
+              <span>View Recent Inspections</span>
+            </button>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '1.25rem', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-emerald)', textTransform: 'uppercase' }}>
-            Compliant
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '0.2rem' }}>
-            {compliant_count || 0}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
-            Passed all mandatory checks
-          </div>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '1.25rem', borderColor: 'rgba(244, 63, 94, 0.3)' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-rose)', textTransform: 'uppercase' }}>
-            Non-Compliant
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--accent-rose)', marginTop: '0.2rem' }}>
-            {non_compliant_count || 0}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
-            Failed at least 1 mandatory rule
-          </div>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '1.25rem', borderColor: 'rgba(245, 158, 11, 0.3)' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-amber)', textTransform: 'uppercase' }}>
-            Needs Review
-          </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: '0.2rem' }}>
-            {needs_review_count || 0}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
-            Unverifiable evidence required
-          </div>
-        </div>
-      </div>
-
-      {/* Main Grid: Common Violations & Priority Products */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-        
-        {/* Left Column: Common Violations Breakdown */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <TrendingUp size={20} style={{ color: 'var(--accent-rose)' }} />
-            <span>Common Rule Violations</span>
-          </h3>
-
-          {common_violations && common_violations.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              {common_violations.map((v, idx) => (
-                <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                    <span>{v.violation}</span>
-                    <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>{v.count} incident(s)</span>
-                  </div>
-                  <div style={{ width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '9999px', height: '8px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${Math.min(100, (v.count / Math.max(1, non_compliant_count + needs_review_count)) * 100)}%`,
-                      background: 'linear-gradient(90deg, #f43f5e 0%, #f59e0b 100%)',
-                      height: '100%'
-                    }}></div>
-                  </div>
-                </div>
-              ))}
+        <div className="photo-box-wrap">
+          <div className="photo-box">
+            <div className="product-illustration">
+              <div className="box-top"></div>
+              <div className="box-body"></div>
             </div>
-          ) : (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '2rem 0', textAlign: 'center' }}>
-              No rule violations recorded in database yet.
+          </div>
+          <div className="compliant-tag">Compliant</div>
+        </div>
+      </section>
+
+      {/* KPI Cards Grid matching frontend-design/index.html */}
+      <section className="kpi-grid">
+        <article className="kpi-card">
+          <div className="kpi-head">
+            <span>Total Inspections</span>
+            <TrendingUp size={16} />
+          </div>
+          <div className="kpi-value">{total_inspections}</div>
+        </article>
+
+        <article className="kpi-card">
+          <div className="kpi-head">
+            <span>Compliant Passed</span>
+            <CheckCircle2 size={16} style={{ color: 'var(--sage-deep)' }} />
+          </div>
+          <div className="kpi-value" style={{ color: 'var(--sage-deep)' }}>{compliant_count}</div>
+        </article>
+
+        <article className="kpi-card">
+          <div className="kpi-head">
+            <span>Legal Violations</span>
+            <AlertTriangle size={16} style={{ color: '#b55246' }} />
+          </div>
+          <div className="kpi-value" style={{ color: '#b55246' }}>{non_compliant_count}</div>
+        </article>
+
+        <article className="kpi-card">
+          <div className="kpi-head">
+            <span>Needs Review</span>
+            <HelpCircle size={16} style={{ color: '#d9a25d' }} />
+          </div>
+          <div className="kpi-value" style={{ color: '#d9a25d' }}>{needs_review_count}</div>
+        </article>
+      </section>
+
+      {/* Analytics Grid: Trend Line & Common Violations Leaderboard */}
+      <section className="analytics">
+        {/* Compliance Trend Chart */}
+        <article className="panel chart-panel">
+          <div className="panel-head">
+            <div>
+              <small>Statutory Compliance Trend</small>
+              <h3>Compliance Rate</h3>
             </div>
-          )}
+            <span className="chip">
+              {complianceRate >= 90 ? 'Healthy Compliance' : 'Review Required'}
+            </span>
+          </div>
+
+          <div className="chart-box">
+            <div className="chart-metrics">
+              <div>
+                <span>Current Rate</span>
+                <strong style={{ color: 'var(--sage-deep)' }}>{complianceRate}%</strong>
+              </div>
+              <div>
+                <span>Enforcement Target</span>
+                <strong>98%</strong>
+              </div>
+            </div>
+
+            <svg viewBox="0 0 420 160" className="chart-svg" aria-label="Compliance Trend Chart">
+              <defs>
+                <linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#7aa77e" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#7aa77e" stopOpacity="0.04" />
+                </linearGradient>
+              </defs>
+              <line x1="18" y1="35" x2="402" y2="35" />
+              <line x1="18" y1="70" x2="402" y2="70" />
+              <line x1="18" y1="105" x2="402" y2="105" />
+              <line x1="18" y1="140" x2="402" y2="140" />
+              <path
+                className="chart-area"
+                d="M 18 110 L 82 98 L 146 90 L 210 75 L 274 65 L 338 48 L 402 38 L 402 140 L 18 140 Z"
+              />
+              <path
+                className="chart-line"
+                d="M 18 110 L 82 98 L 146 90 L 210 75 L 274 65 L 338 48 L 402 38"
+              />
+            </svg>
+          </div>
+        </article>
+
+        {/* Common Rule Violations Leaderboard */}
+        <article className="panel brands-panel">
+          <div className="panel-head">
+            <div>
+              <small>Rule Violation Watchlist</small>
+              <h3>Frequent Rule Violations</h3>
+            </div>
+          </div>
+
+          <div className="brand-list">
+            {common_violations && common_violations.length > 0 ? (
+              common_violations.slice(0, 4).map((item, idx) => {
+                const maxCount = Math.max(1, common_violations[0]?.count || 1);
+                const percent = Math.min(100, Math.round((item.count / maxCount) * 100));
+                return (
+                  <div key={idx} className="brand-item">
+                    <div className="brand-name-row">
+                      <span className="rank">{idx + 1}</span>
+                      <span>{item.violation}</span>
+                    </div>
+                    <span className="brand-score">{item.count} flagged</span>
+                    <div className="progress">
+                      <span style={{ width: `${percent}%` }}></span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ color: 'var(--muted)', fontSize: '0.88rem', fontStyle: 'italic', padding: '1.5rem 0', textAlign: 'center' }}>
+                All inspected commodities currently comply with mandatory legal requirements.
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
+
+      {/* Recent Inspection Activity Section */}
+      <section className="panel scans-panel" id="recent-activity-section">
+        <div className="panel-head scans-head">
+          <div>
+            <small>Database Audit Feed</small>
+            <h3>Recent Inspection Records</h3>
+          </div>
         </div>
 
-        {/* Right Column: Products Requiring Attention */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <AlertCircle size={20} style={{ color: 'var(--accent-amber)' }} />
-            <span>Products Requiring Attention</span>
-          </h3>
-
-          {attention_products && attention_products.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {attention_products.slice(0, 5).map((item) => (
-                <div
-                  key={item.scan_id}
-                  style={{
-                    background: 'rgba(0,0,0,0.3)',
-                    padding: '0.85rem 1rem',
-                    borderRadius: '10px',
-                    border: '1px solid var(--border-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
+        <div className="scan-list">
+          {recent_scans && recent_scans.length > 0 ? (
+            recent_scans.map((scan) => {
+              const statusClass = scan.overall_status === 'COMPLIANT' ? 'ok' : (scan.overall_status === 'NON_COMPLIANT' ? 'flag' : 'review');
+              return (
+                <article
+                  key={scan.scan_id}
+                  className="scan-item"
+                  onClick={() => onViewScanResult(scan)}
                 >
-                  <div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{item.product_name}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{item.brand} • {item.created_at?.substring(0, 10)}</div>
+                  <div className="scan-thumb thumb-one">
+                    <ShieldCheck size={24} style={{ color: 'var(--sage-deep)' }} />
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      padding: '0.2rem 0.6rem',
-                      borderRadius: '9999px',
-                      color: STATUS_COLOR_MAP[item.overall_status] || 'var(--accent-amber)',
-                      background: `rgba(${item.overall_status === 'NON_COMPLIANT' ? '244, 63, 94' : '245, 158, 11'}, 0.15)`
-                    }}>
-                      {item.overall_status}
+                  <div className="scan-info">
+                    <h4>{scan.product_name || 'Packaged Commodity'}</h4>
+                    <p>
+                      {scan.brand || 'Generic Brand'} • {scan.barcode || 'Barcode N/A'} • {scan.created_at?.substring(0, 10) || 'Recent'}
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span className={`status ${statusClass}`}>
+                      {scan.overall_status === 'COMPLIANT' ? 'OK / PASS' : (scan.overall_status === 'NON_COMPLIANT' ? 'FLAG' : 'REVIEW')}
                     </span>
 
                     <button
-                      className="btn-secondary"
-                      onClick={() => onViewScanResult(item)}
-                      style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                      className="btn secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewScanResult(scan);
+                      }}
+                      style={{ padding: '0 12px', minHeight: '32px', fontSize: '0.78rem' }}
+                      type="button"
                     >
-                      <ArrowUpRight size={14} />
+                      <FileText size={14} />
+                      <span>Details</span>
                     </button>
+
+                    <a
+                      href={getReportDownloadUrl(scan.scan_id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn primary"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ padding: '0 12px', minHeight: '32px', fontSize: '0.78rem', textDecoration: 'none' }}
+                    >
+                      <Download size={13} />
+                      <span>PDF</span>
+                    </a>
                   </div>
-                </div>
-              ))}
-            </div>
+                </article>
+              );
+            })
           ) : (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '2rem 0', textAlign: 'center' }}>
-              All inspected products are currently fully compliant.
+            <div style={{ color: 'var(--muted)', fontSize: '0.9rem', textAlign: 'center', padding: '2rem' }}>
+              No inspection records found in database. Run a new scan to begin logging data.
             </div>
           )}
         </div>
-      </div>
-
-      {/* Recent Inspections Feed Table */}
-      <div className="glass-panel" style={{ padding: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>
-          Recent Inspection Records
-        </h3>
-
-        {recent_scans && recent_scans.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '0.75rem' }}>Scan ID</th>
-                  <th style={{ padding: '0.75rem' }}>Product Name</th>
-                  <th style={{ padding: '0.75rem' }}>Brand</th>
-                  <th style={{ padding: '0.75rem' }}>Status</th>
-                  <th style={{ padding: '0.75rem' }}>Date</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent_scans.map((scan) => (
-                  <tr key={scan.scan_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)' }} className="mono-text">
-                      #{scan.scan_id}
-                    </td>
-                    <td style={{ padding: '0.75rem', fontWeight: 600 }}>{scan.product_name}</td>
-                    <td style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>{scan.brand}</td>
-                    <td style={{ padding: '0.75rem' }}>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: '9999px',
-                        color: STATUS_COLOR_MAP[scan.overall_status] || 'var(--accent-amber)',
-                        background: `rgba(${scan.overall_status === 'COMPLIANT' ? '16, 185, 129' : scan.overall_status === 'NON_COMPLIANT' ? '244, 63, 94' : '245, 158, 11'}, 0.15)`
-                      }}>
-                        {scan.overall_status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-                      {scan.created_at?.substring(0, 10) || '2026-09-11'}
-                    </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button
-                          className="btn-secondary"
-                          onClick={() => onViewScanResult(scan)}
-                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
-                        >
-                          <FileText size={14} />
-                        </button>
-                        <a
-                          href={`http://localhost:5001/api/reports/${scan.scan_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-primary"
-                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', textDecoration: 'none' }}
-                        >
-                          <Download size={14} />
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '2rem' }}>
-            No recent scans recorded.
-          </div>
-        )}
-      </div>
+      </section>
     </div>
   );
 }

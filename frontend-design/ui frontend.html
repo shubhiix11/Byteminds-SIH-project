@@ -1,0 +1,832 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LabelSure Dashboard</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg, #eef5ef 0%, #f7f8f6 100%);
+    color: #333;
+    padding: 12px;
+  }
+
+  .container {
+    display: flex;
+    min-height: calc(100vh - 24px);
+    width: calc(100% - 24px);
+    max-width: 1500px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.3);
+    border-left: 1px solid #d8e5d9;
+    border-right: 1px solid #d8e5d9;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 220px;
+    background-color: #ffffff;
+    border-right: 2px solid #e0e7df;
+    padding: 24px 18px;
+  }
+
+  .logo {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2e7d4f;
+  }
+
+  .portal-label {
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 30px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #5d6d63;
+    font-weight: bold;
+  }
+
+  .nav-link {
+    display: block;
+    padding: 10px;
+    margin-bottom: 5px;
+    text-decoration: none;
+    color: #333;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .nav-link.active {
+    background-color: #2e7d4f;
+    color: white;
+    font-weight: bold;
+  }
+
+  .nav-link:hover {
+    background-color: #eee;
+  }
+
+  .main {
+    flex: 1;
+    padding: 24px 28px;
+  }
+
+  .topbar {
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #e7f5e1 0%, #d5ebd0 100%);
+    border: 1px solid #bfd8b7;
+    box-shadow: 0 6px 16px rgba(107, 146, 97, 0.12);
+  }
+
+  .topbar-brand {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .brand-main {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2f6c3d;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+  }
+
+  .brand-sub {
+    font-size: 11px;
+    font-weight: bold;
+    color: #4a6e4d;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .search-box {
+    padding: 10px 12px;
+    border: 1px solid #b6d0ae;
+    border-radius: 8px;
+    margin-right: 0;
+    width: 270px;
+    background: rgba(255,255,255,0.85);
+    color: #2d3b2f;
+  }
+
+  .icon-btn {
+    background-color: #eee;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    text-align: center;
+    line-height: 35px;
+    margin-right: 10px;
+    cursor: pointer;
+  }
+
+  .hero {
+    background-color: #dce8dc;
+    border: 1px dashed #2e7d4f;
+    border-radius: 8px;
+    padding: 30px 28px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    min-height: 240px;
+  }
+
+  .hero-text {
+    flex: 1;
+  }
+
+  .hero h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    color: #222;
+  }
+
+  .hero p {
+    margin-bottom: 15px;
+    color: #555;
+  }
+
+  .photo-box-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .photo-box {
+    width: 220px;
+    height: 220px;
+    background-color: #fff;
+    border: 2px solid #2e7d4f;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .photo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .photo-box .placeholder-text {
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+    padding: 10px;
+  }
+
+  .compliant-tag {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+    background-color: white;
+    border: 1px solid #2e7d4f;
+    color: #2e7d4f;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+
+  .btn {
+    background-color: #2e7d4f;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .btn:hover {
+    background-color: #256a41;
+  }
+
+  .upload-btn {
+    display: inline-block;
+    background-color: #2e7d4f;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.2;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    box-shadow: 0 4px 10px rgba(46, 125, 79, 0.18);
+  }
+
+  .upload-btn:hover {
+    background-color: #236d42;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(46, 125, 79, 0.24);
+  }
+
+  .upload-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(46, 125, 79, 0.18);
+  }
+
+  .upload-btn:focus-within {
+    outline: 2px solid #2e7d4f;
+    outline-offset: 3px;
+  }
+
+  .upload-btn input {
+    display: none;
+  }
+
+  .manual-entry {
+    background: #ffffff;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 10px rgba(26, 77, 43, 0.04);
+  }
+
+  .manual-entry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .manual-entry h3 {
+    font-size: 14px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .barcode-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .barcode-input {
+    flex: 1;
+    min-width: 220px;
+    padding: 10px 12px;
+    border: 1px solid #c8d7cc;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #f8faf8;
+  }
+
+  .barcode-btn {
+    background-color: #2e7d4f;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .barcode-btn:hover {
+    background-color: #256a41;
+  }
+
+  .ai-summary {
+    background: #ffffff;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: 0 4px 10px rgba(26, 77, 43, 0.04);
+  }
+
+  .ai-summary h3 {
+    font-size: 14px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+
+  .ai-summary p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #3d4f45;
+    margin: 0;
+  }
+
+  .product-details {
+    background: #ffffff;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-top: 16px;
+    box-shadow: 0 4px 10px rgba(26, 77, 43, 0.04);
+  }
+
+  .product-details h3 {
+    font-size: 14px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+
+  .comparison-box {
+    background: #ffffff;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-top: 16px;
+    box-shadow: 0 4px 10px rgba(26, 77, 43, 0.04);
+  }
+
+  .comparison-box h3 {
+    font-size: 14px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .compare-column {
+    background: #f8faf8;
+    border: 1px solid #d9e5dc;
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .compare-column h4 {
+    font-size: 13px;
+    color: #234b38;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .compare-list {
+    list-style: none;
+    display: grid;
+    gap: 8px;
+  }
+
+  .compare-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid #edf1ee;
+    padding-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .compare-list span:first-child {
+    color: #6b7d71;
+  }
+
+  .compare-list span:last-child {
+    color: #1d362b;
+    font-weight: bold;
+  }
+
+  .detail-list {
+    list-style: none;
+    display: grid;
+    gap: 10px;
+  }
+
+  .detail-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid #edf1ee;
+    padding-bottom: 8px;
+    font-size: 14px;
+  }
+
+  .detail-list span:first-child {
+    color: #6b7d71;
+  }
+
+  .detail-list span:last-child {
+    color: #1d362b;
+    font-weight: bold;
+  }
+
+  .compliance-panel {
+    background: #ffffff;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-top: 16px;
+    box-shadow: 0 4px 10px rgba(26, 77, 43, 0.04);
+  }
+
+  .compliance-panel h3 {
+    font-size: 14px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+
+  .compliance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .compliance-card {
+    background: #f8faf8;
+    border: 1px solid #d9e5dc;
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .compliance-card h4 {
+    font-size: 12px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  .compliance-score {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2e7d4f;
+    margin-bottom: 4px;
+  }
+
+  .compliance-state {
+    font-size: 12px;
+    color: #5d6d63;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: bold;
+    background: #e8f5ea;
+    color: #2e7d4f;
+  }
+
+  .recent-scans {
+    background: #ffffff;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-top: 16px;
+    box-shadow: 0 4px 10px rgba(26, 77, 43, 0.04);
+  }
+
+  .recent-scans h3 {
+    font-size: 14px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+
+  .scan-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .scan-table th,
+  .scan-table td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid #edf1ee;
+    font-size: 13px;
+    color: #3d4f45;
+  }
+
+  .scan-table th {
+    color: #234b38;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-pill {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: bold;
+    background: #e8f5ea;
+    color: #2e7d4f;
+  }
+
+  .quick-view-btn {
+    background-color: #f0f7f1;
+    border: 1px solid #bfd8b7;
+    color: #2e7d4f;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .reports-panel {
+    background: #ffffff;
+    border: 1px solid #d9e5dc;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-top: 16px;
+    box-shadow: 0 4px 10px rgba(26, 77, 43, 0.04);
+  }
+
+  .reports-panel h3 {
+    font-size: 14px;
+    color: #234b38;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .report-card {
+    background: #f8faf8;
+    border: 1px solid #d9e5dc;
+    border-radius: 8px;
+    padding: 14px;
+  }
+
+  .report-card h4 {
+    font-size: 13px;
+    color: #234b38;
+    margin-bottom: 8px;
+  }
+
+  .report-metric {
+    font-size: 22px;
+    font-weight: bold;
+    color: #2e7d4f;
+    margin-bottom: 6px;
+  }
+
+  .report-meta {
+    font-size: 12px;
+    color: #5d6d63;
+  }
+
+  footer {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="sidebar">
+    <div>
+      <div class="logo">LabelSure</div>
+      <span class="portal-label">Legal Metrology Portal</span>
+    </div>
+    <a class="nav-link active" data-target="home">🏠 Home</a>
+    <a class="nav-link" data-target="scan">📷 Scan</a>
+    <a class="nav-link" data-target="reports"> Reports</a>
+    <a class="nav-link" data-target="settings">⚙️ Settings</a>
+  </div>
+
+  <div class="main">
+
+    <div class="topbar">
+      <div class="topbar-brand">
+        <div class="brand-main">LabelSure</div>
+        <div class="brand-sub">Legal Metrology Compliance Scanning Portal</div>
+      </div>
+      <input type="text" class="search-box" placeholder="Search product, brand or label...">
+    </div>
+
+    <div class="hero" id="scan-section">
+      <div class="hero-text">
+        <p style="color:#2e7d4f; font-weight:bold; font-size:12px;">CHECK - VERIFY - STAY COMPLIANT</p>
+        <h1>Scan. Verify. Comply.</h1>
+        <p>AI-powered label verification for Legal Metrology (Packaged Commodities) Rules, 2011. (mini project for college submission)</p>
+        <label class="upload-btn">
+          Upload Barcode Image
+          <input type="file" accept="image/*">
+        </label>
+      </div>
+
+      <div class="photo-box-wrap">
+        <div class="photo-box">
+          <img src="" alt="Scanned product barcode" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+          <div class="placeholder-text" style="display:block;">📷<br>Barcode photo<br>will show here</div>
+        </div>
+        <div class="compliant-tag">✓ Compliant</div>
+      </div>
+    </div>
+
+    <div class="manual-entry">
+      <div class="manual-entry-head">
+        <h3>Manual Barcode Entry</h3>
+      </div>
+      <div class="barcode-row">
+        <input type="text" class="barcode-input" placeholder="Enter barcode number">
+        <button class="barcode-btn">Verify Barcode</button>
+      </div>
+    </div>
+
+    <div class="ai-summary">
+      <h3>AI Summary</h3>
+      <p>
+        The scanned barcode appears to belong to Sunrise Harvest Granola, a packaged snack product.
+        The label content is readable and the product appears compliant, but the expiration date should
+        be rechecked for complete visibility.
+      </p>
+    </div>
+
+    <div class="product-details">
+      <h3>Product Details</h3>
+      <ul class="detail-list">
+        <li><span>Product</span><span>Sunrise Harvest Granola</span></li>
+        <li><span>Manufacturer</span><span>Sunrise Foods Pvt. Ltd.</span></li>
+        <li><span>Common / Generic Name</span><span>Granola Cereal</span></li>
+        <li><span>Net Quantity Declaration</span><span>500 g</span></li>
+        <li><span>Month & Year of Manufacture</span><span>Aug 2026</span></li>
+        <li><span>Packaging / Import</span><span>Domestic Packed</span></li>
+        <li><span>Unit Sale Price</span><span>₹299.00</span></li>
+        <li><span>Minimum Character Height of Net Quantity</span><span>1.5 mm</span></li>
+        <li><span>Barcode / GTIN Master Registry Consistency</span><span>Consistent</span></li>
+        <li><span>Maximum Retail Price (MRP)</span><span>₹299.00</span></li>
+        <li><span>Batch</span><span>A2123</span></li>
+      </ul>
+    </div>
+
+    <div class="comparison-box">
+      <h3>Compare Details</h3>
+      <div class="compare-grid">
+        <div class="compare-column">
+          <h4>AI Extracted</h4>
+          <ul class="compare-list">
+            <li><span>Product</span><span>Sunrise Harvest Granola</span></li>
+            <li><span>Pack Size</span><span>500 g</span></li>
+            <li><span>MRP</span><span>₹299.00</span></li>
+            <li><span>Batch</span><span>A2123</span></li>
+          </ul>
+        </div>
+
+        <div class="compare-column">
+          <h4>Label Details</h4>
+          <ul class="compare-list">
+            <li><span>Product</span><span>Sunrise Harvest Granola</span></li>
+            <li><span>Pack Size</span><span>500 g</span></li>
+            <li><span>MRP</span><span>₹299.00</span></li>
+            <li><span>Batch</span><span>A2123</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="compliance-panel">
+      <h3>Compliance Status</h3>
+      <div class="compliance-grid">
+        <div class="compliance-card">
+          <h4>Overall Score</h4>
+          <div class="compliance-score">96.8%</div>
+          <div class="compliance-state">Pass rate</div>
+        </div>
+        <div class="compliance-card">
+          <h4>Test Result</h4>
+          <div class="status-badge">Compliant</div>
+          <div class="compliance-state">No critical mismatch found</div>
+        </div>
+        <div class="compliance-card">
+          <h4>Checks</h4>
+          <div class="compliance-score" style="font-size:20px;">12/12</div>
+          <div class="compliance-state">Label checks completed</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recent-scans">
+      <h3>Recent Scans</h3>
+      <table class="scan-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sunrise Harvest Granola</td>
+            <td>10 Sep 2026</td>
+            <td><span class="status-pill">Compliant</span></td>
+            <td><button class="quick-view-btn">Quick View</button></td>
+          </tr>
+          <tr>
+            <td>Green Valley Milk</td>
+            <td>09 Sep 2026</td>
+            <td><span class="status-pill">Compliant</span></td>
+            <td><button class="quick-view-btn">Quick View</button></td>
+          </tr>
+          <tr>
+            <td>Royal Spice Mix</td>
+            <td>08 Sep 2026</td>
+            <td><span class="status-pill">Needs Review</span></td>
+            <td><button class="quick-view-btn">Quick View</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="reports-panel" id="reports-section">
+      <h3>Reports Overview</h3>
+      <div class="report-grid">
+        <div class="report-card">
+          <h4>Total Scans</h4>
+          <div class="report-metric">1,284</div>
+          <div class="report-meta">Across last 30 days</div>
+        </div>
+        <div class="report-card">
+          <h4>Compliance Rate</h4>
+          <div class="report-metric">96.8%</div>
+          <div class="report-meta">Positive verification rate</div>
+        </div>
+        <div class="report-card">
+          <h4>Pending Reviews</h4>
+          <div class="report-metric">18</div>
+          <div class="report-meta">Awaiting manual check</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const navLinks = document.querySelectorAll(".nav-link");
+  const mainSection = document.querySelector(".main");
+  const scanSection = document.getElementById("scan-section");
+  const reportsSection = document.getElementById("reports-section");
+
+  navLinks.forEach(link => {
+    link.addEventListener("click", function() {
+      navLinks.forEach(l => l.classList.remove("active"));
+      this.classList.add("active");
+
+      const target = this.dataset.target;
+
+      if (target === "home") {
+        mainSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (target === "scan") {
+        scanSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (target === "reports") {
+        reportsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

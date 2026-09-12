@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from './components/Navbar';
+import Navbar, { Topbar } from './components/Navbar';
 import LoginPage from './pages/LoginPage';
 import ScanPage from './pages/ScanPage';
 import ResultsPage from './pages/ResultsPage';
@@ -8,11 +8,12 @@ import DashboardPage from './pages/DashboardPage';
 import { checkHealth } from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'results' | 'repository' | 'dashboard' | 'login'
+  const [activeTab, setActiveTab] = useState('dashboard'); // Default to dashboard/home view
   const [isConnected, setIsConnected] = useState(false);
   const [healthData, setHealthData] = useState({ connected: false });
-  const [user, setUser] = useState({ username: 'Inspector Alpha', role: 'Inspector' });
+  const [user, setUser] = useState({ username: 'Inspector Alpha', role: 'Legal Metrology Inspector' });
   const [scanResult, setScanResult] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -44,7 +45,7 @@ export default function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    setActiveTab('scan');
+    setActiveTab('dashboard');
   };
 
   const handleLogout = () => {
@@ -53,7 +54,8 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="shell-container">
+      {/* Sidebar Navigation */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -64,9 +66,25 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main style={{ flex: 1, paddingBottom: '3rem' }}>
+      {/* Main Content Area */}
+      <main className="main">
+        <Topbar
+          user={user}
+          onLogout={handleLogout}
+          setActiveTab={setActiveTab}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+
         {activeTab === 'login' && (
           <LoginPage onLoginSuccess={handleLoginSuccess} />
+        )}
+
+        {activeTab === 'dashboard' && (
+          <DashboardPage
+            onViewScanResult={handleViewScanResult}
+            onStartScan={() => setActiveTab('scan')}
+          />
         )}
 
         {activeTab === 'scan' && (
@@ -81,23 +99,12 @@ export default function App() {
         )}
 
         {activeTab === 'repository' && (
-          <RepositoryPage onViewScanResult={handleViewScanResult} />
-        )}
-
-        {activeTab === 'dashboard' && (
-          <DashboardPage onViewScanResult={handleViewScanResult} />
+          <RepositoryPage
+            onViewScanResult={handleViewScanResult}
+            externalSearch={searchQuery}
+          />
         )}
       </main>
-
-      <footer style={{
-        textAlign: 'center',
-        padding: '1.5rem',
-        borderTop: '1px solid var(--border-color)',
-        color: 'var(--text-dim)',
-        fontSize: '0.8rem'
-      }}>
-        LabelSure &copy; {new Date().getFullYear()} • Legal Metrology Packaged Commodity AI Compliance & Enforcement Platform
-      </footer>
     </div>
   );
 }
