@@ -14,9 +14,14 @@ export async function checkHealth() {
   }
 }
 
-export async function scanImage(imageFile) {
+export async function scanImage(imageFile, barcode = null) {
   const formData = new FormData();
   formData.append('image', imageFile);
+  
+  const cleanBarcode = barcode && typeof barcode === 'string' ? barcode.trim().replace(/\s+/g, '') : null;
+  if (cleanBarcode) {
+    formData.append('barcode', cleanBarcode);
+  }
 
   const response = await fetch(`${API_BASE_URL}/api/scan`, {
     method: 'POST',
@@ -28,8 +33,46 @@ export async function scanImage(imageFile) {
     throw new Error(data.error || data.details || 'Failed to scan image');
   }
 
+  // If a manual barcode was supplied and backend's image-level decoder didn't find one on the label surface,
+  // query the backend's existing /api/openfoodfacts endpoint to enrich with real Open Food Facts product data
+  if (cleanBarcode && (!data.openfoodfacts || data.openfoodfacts.status === 'NO_BARCODE' || !data.openfoodfacts.product)) {
+    try {
+      const offRes = await fetch(`${API_BASE_URL}/api/openfoodfacts/${encodeURIComponent(cleanBarcode)}`);
+      const offData = await offRes.json();
+      if (offData && offData.status) {
+        data.openfoodfacts = {
+          available: offData.status === 'FOUND',
+          status: offData.status,
+          barcode: cleanBarcode,
+          product: offData.product,
+          source_url: offData.source_url,
+          retrieved_at: offData.retrieved_at,
+          disclaimer: offData.disclaimer,
+          source: 'OPEN_FOOD_FACTS'
+        };
+        data.openfoodfacts_product = offData.product;
+        data.openfoodfacts_status = offData.status;
+        data.openfoodfacts_source_url = offData.source_url;
+        data.openfoodfacts_retrieved_at = offData.retrieved_at;
+        data.barcode = cleanBarcode;
+        data.barcode_source = 'MANUAL_ENTRY';
+      }
+    } catch (offErr) {
+      console.warn('Manual barcode Open Food Facts lookup notice:', offErr);
+    }
+  }
+
+  if (cleanBarcode && !data.barcode_source) {
+    data.barcode_source = (data.barcode_decoding?.detected && data.barcode_decoding?.barcode === cleanBarcode)
+      ? 'IMAGE_DETECTED'
+      : 'MANUAL_ENTRY';
+  } else if (!data.barcode_source) {
+    data.barcode_source = data.barcode_decoding?.detected ? 'IMAGE_DETECTED' : 'NONE';
+  }
+
   return data;
 }
+
 
 export async function fetchScans(filters = {}) {
   const queryParams = new URLSearchParams();

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Sparkles, X, AlertTriangle, FileImage, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Camera, Sparkles, X, AlertTriangle, FileImage, ShieldCheck, CheckCircle2, Barcode } from 'lucide-react';
 import { scanImage } from '../services/api';
 
 const SCAN_STEPS = [
@@ -15,6 +15,8 @@ const SCAN_STEPS = [
 export default function ScanPage({ onScanComplete }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [barcode, setBarcode] = useState('');
+  const [barcodeError, setBarcodeError] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanStepIndex, setScanStepIndex] = useState(0);
   const [error, setError] = useState(null);
@@ -45,19 +47,49 @@ export default function ScanPage({ onScanComplete }) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleBarcodeChange = (e) => {
+    const rawVal = e.target.value;
+    setBarcode(rawVal);
+
+    const cleanVal = rawVal.trim().replace(/\s+/g, '');
+    if (!cleanVal) {
+      setBarcodeError(null);
+      return;
+    }
+
+    if (!/^\d+$/.test(cleanVal)) {
+      setBarcodeError('Barcode should contain only numeric digits (e.g., EAN, UPC, GTIN).');
+    } else if (cleanVal.length < 6 || cleanVal.length > 18) {
+      setBarcodeError('Enter a valid numeric barcode (typically 8, 12, 13, or 14 digits).');
+    } else {
+      setBarcodeError(null);
+    }
+  };
+
   const handleUploadAndScan = async () => {
-    if (!selectedFile) return;
+    // 1. IMAGE IS COMPULSORY
+    if (!selectedFile) {
+      setError('Please upload a package image to perform the compliance scan.');
+      return;
+    }
+
+    // 2. OPTIONAL BARCODE VALIDATION
+    const cleanBarcode = barcode.trim().replace(/\s+/g, '');
+    if (cleanBarcode && !/^\d+$/.test(cleanBarcode)) {
+      setError('Please enter a valid numeric barcode, or leave the barcode field empty.');
+      return;
+    }
+
     setIsScanning(true);
     setError(null);
     setScanStepIndex(0);
 
-    // Progress step animation interval
     const stepInterval = setInterval(() => {
       setScanStepIndex((prev) => (prev < SCAN_STEPS.length - 1 ? prev + 1 : prev));
     }, 450);
 
     try {
-      const result = await scanImage(selectedFile);
+      const result = await scanImage(selectedFile, cleanBarcode || null);
       clearInterval(stepInterval);
       onScanComplete(result);
     } catch (err) {
@@ -78,20 +110,31 @@ export default function ScanPage({ onScanComplete }) {
           Scan & Verify Legal Metrology Compliance
         </h1>
         <p style={{ color: 'var(--muted)', fontSize: '0.94rem', lineHeight: '1.6' }}>
-          Upload packaged commodity package images to extract mandatory declarations, verify Legal Metrology (Packaged Commodities) Rules, and corroborate with Open Food Facts.
+          Upload packaged commodity package images to extract mandatory declarations, verify Legal Metrology (Packaged Commodities) Rules, and optionally corroborate with Open Food Facts.
         </p>
       </div>
 
       <div className="panel" style={{ padding: '24px' }}>
-        {!selectedFile ? (
-          <div>
-            {/* Viewfinder Dropzone */}
+        
+        {/* SECTION 1: UPLOAD PACKAGE LABEL * (COMPULSORY) */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span>Upload Package Label</span>
+              <span style={{ color: '#b55246', fontWeight: 800 }}>*</span>
+            </label>
+            <span style={{ fontSize: '0.74rem', color: 'var(--muted)', fontWeight: 600 }}>
+              Primary Evidence Source (Compulsory)
+            </span>
+          </div>
+
+          {!selectedFile ? (
             <div
               className="dropzone"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              style={{ minHeight: '340px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+              style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
             >
               <input
                 type="file"
@@ -119,20 +162,17 @@ export default function ScanPage({ onScanComplete }) {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text)', marginBottom: '0.4rem' }}>
                 Drag & Drop Package Label Image
               </h3>
-              <p style={{ color: 'var(--muted)', fontSize: '0.88rem', maxWidth: '420px', marginBottom: '1.4rem' }}>
-                Supports JPG, PNG, WEBP, TIFF images up to 10MB. Our local OCR pipeline automatically analyzes declarations, fonts, and barcodes.
+              <p style={{ color: 'var(--muted)', fontSize: '0.88rem', maxWidth: '420px', marginBottom: '1.4rem', textAlign: 'center' }}>
+                Supports JPG, PNG, WEBP, TIFF images up to 10MB. Label image is required for Legal Metrology printed declaration verification.
               </p>
 
               <button className="btn secondary" type="button" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
                 <FileImage size={16} />
-                <span>Browse Image Files</span>
+                <span>Choose Image</span>
               </button>
             </div>
-          </div>
-        ) : (
-          <div>
-            {/* Camera Stage Viewfinder (matching frontend-design/mobile-camera.html) */}
-            <div className="stage" style={{ marginBottom: '1.5rem', maxHeight: '440px' }}>
+          ) : (
+            <div className="stage" style={{ maxHeight: '420px', position: 'relative' }}>
               <div className="tag">
                 {isScanning ? 'Analyzing Label' : 'Ready for Inspection'}
               </div>
@@ -180,74 +220,179 @@ export default function ScanPage({ onScanComplete }) {
                 <X size={18} />
               </button>
             </div>
+          )}
+        </div>
 
-            {/* Scanning Progress Banner */}
-            {isScanning && (
-              <div style={{
-                background: 'rgba(122, 167, 126, 0.12)',
-                border: '1px solid rgba(122, 167, 126, 0.3)',
-                borderRadius: '16px',
-                padding: '1.2rem',
-                marginBottom: '1.5rem',
-                textAlign: 'center'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
-                  <div className="spinner"></div>
-                  <span style={{ fontWeight: 800, color: 'var(--sage-deep)', fontSize: '0.95rem' }}>
-                    {SCAN_STEPS[scanStepIndex]}
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 600 }}>
-                  Step {scanStepIndex + 1} of {SCAN_STEPS.length} • Deterministic Metrology Engine
-                </div>
-              </div>
+        {/* SECTION 2: BARCODE NUMBER (OPTIONAL) */}
+        <div style={{
+          marginBottom: '1.5rem',
+          padding: '1.1rem 1.25rem',
+          background: 'var(--panel-soft)',
+          borderRadius: '16px',
+          border: '1px solid var(--border)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <label htmlFor="manual-barcode-input" style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Barcode size={16} style={{ color: 'var(--sage-deep)' }} />
+              <span>Barcode Number (Optional)</span>
+            </label>
+            <span style={{ fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 600 }}>
+              Optional Product Lookup
+            </span>
+          </div>
+
+          <div style={{ position: 'relative', marginTop: '0.4rem' }}>
+            <input
+              id="manual-barcode-input"
+              type="text"
+              value={barcode}
+              onChange={handleBarcodeChange}
+              placeholder="Enter barcode / GTIN"
+              disabled={isScanning}
+              className="input-field"
+              style={{
+                width: '100%',
+                padding: '0.65rem 1rem 0.65rem 2.5rem',
+                borderRadius: '10px',
+                border: barcodeError ? '1px solid #b55246' : '1px solid var(--border)',
+                background: '#ffffff',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.9rem',
+                color: 'var(--text)',
+                letterSpacing: '0.05em'
+              }}
+            />
+            <Barcode
+              size={18}
+              style={{
+                position: 'absolute',
+                left: '0.85rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--muted)',
+                pointerEvents: 'none'
+              }}
+            />
+            {barcode && (
+              <button
+                type="button"
+                onClick={() => { setBarcode(''); setBarcodeError(null); }}
+                disabled={isScanning}
+                aria-label="Clear barcode"
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0.2rem'
+                }}
+              >
+                <X size={14} />
+              </button>
             )}
+          </div>
 
-            {/* Actions Bar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Selected Commodity File</span>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800 }}>{selectedFile.name}</div>
-              </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.75rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+            <span style={{ color: 'var(--muted)' }}>
+              Optional — used to retrieve product information from Open Food Facts.
+            </span>
+            {barcode && !barcodeError && (
+              <span style={{ color: 'var(--sage-deep)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <CheckCircle2 size={12} /> {barcode.trim().replace(/\s+/g, '').length} digits
+              </span>
+            )}
+          </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  className="btn secondary"
-                  onClick={clearSelection}
-                  disabled={isScanning}
-                  type="button"
-                >
-                  Change Image
-                </button>
+          {barcodeError && (
+            <div style={{ color: '#b55246', fontSize: '0.75rem', fontWeight: 600, marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <AlertTriangle size={12} />
+              <span>{barcodeError}</span>
+            </div>
+          )}
+        </div>
 
-                <button
-                  className="btn primary"
-                  onClick={handleUploadAndScan}
-                  disabled={isScanning}
-                  type="button"
-                >
-                  {isScanning ? (
-                    <>
-                      <div className="spinner" style={{ width: '16px', height: '16px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#ffffff' }}></div>
-                      <span>Analyzing Package...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={17} />
-                      <span>Process & Verify Compliance</span>
-                    </>
-                  )}
-                </button>
-              </div>
+        {/* Scanning Progress Banner */}
+        {isScanning && (
+          <div style={{
+            background: 'rgba(122, 167, 126, 0.12)',
+            border: '1px solid rgba(122, 167, 126, 0.3)',
+            borderRadius: '16px',
+            padding: '1.2rem',
+            marginBottom: '1.5rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
+              <div className="spinner"></div>
+              <span style={{ fontWeight: 800, color: 'var(--sage-deep)', fontSize: '0.95rem' }}>
+                {SCAN_STEPS[scanStepIndex]}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 600 }}>
+              Step {scanStepIndex + 1} of {SCAN_STEPS.length} • Deterministic Metrology Engine
             </div>
           </div>
         )}
+
+        {/* SECTION 3: ACTIONS BAR */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+          <div>
+            {selectedFile ? (
+              <div>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>Selected Commodity File</span>
+                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text)' }}>{selectedFile.name}</div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                No image selected. <span style={{ color: '#b55246', fontWeight: 700 }}>Package label photo is compulsory.</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {selectedFile && (
+              <button
+                className="btn secondary"
+                onClick={clearSelection}
+                disabled={isScanning}
+                type="button"
+              >
+                Change Image
+              </button>
+            )}
+
+            <button
+              className="btn primary"
+              onClick={handleUploadAndScan}
+              disabled={isScanning}
+              type="button"
+              style={{ padding: '0.65rem 1.4rem' }}
+            >
+              {isScanning ? (
+                <>
+                  <div className="spinner" style={{ width: '16px', height: '16px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#ffffff' }}></div>
+                  <span>Analyzing Package...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={17} />
+                  <span>Scan Label for Compliance</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
 
         {/* Error Notice */}
         {error && (
           <div className="alert-box" style={{ marginTop: '1.5rem' }}>
             <div>
-              <strong>Inspection Request Error</strong>
+              <strong>Inspection Request Notice</strong>
               <span>{error}</span>
             </div>
             <div className="alert-tag">Action Needed</div>

@@ -58,18 +58,14 @@ export default function ResultsPage({ scanResult, onNewScan }) {
   const offProduct = openFoodFacts?.product || null;
   const offCrossCheck = openFoodFacts?.cross_check || scanResult.openfoodfacts_cross_check || null;
 
-  const getNutriscoreColor = (grade) => {
-    switch ((grade || '').toUpperCase()) {
-      case 'A': return '#038141';
-      case 'B': return '#85bb2f';
-      case 'C': return '#fecb02';
-      case 'D': return '#ee8100';
-      case 'E': return '#e63e11';
-      default: return '#9ca3af';
-    }
-  };
-
   const activeImageUrl = imageTab === 'annotated' && annotated_image_url ? annotated_image_url : (original_image_url || image_url);
+
+  const resolvedBarcodeSource = scanResult.barcode_source || (
+    scanResult.barcode_decoding?.detected ? 'IMAGE_DETECTED' : (scanResult.barcode && scanResult.barcode !== 'NOT_DETECTED' ? 'MANUAL_ENTRY' : null)
+  );
+  const barcodeSourceText = resolvedBarcodeSource === 'IMAGE_DETECTED'
+    ? 'Barcode source: Image detected'
+    : (resolvedBarcodeSource === 'MANUAL_ENTRY' ? 'Barcode source: Manually entered' : null);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -148,12 +144,21 @@ export default function ResultsPage({ scanResult, onNewScan }) {
           </a>
 
           <button
+            className={`nav-button ${viewMode === 'rules' ? 'active' : ''}`}
+            onClick={() => setViewMode('rules')}
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
+          >
+            <FileText size={16} />
+            <span>Package Label Analysis ({rule_results?.length || 0})</span>
+          </button>
+
+          <button
             className={`nav-button ${viewMode === 'openfoodfacts' ? 'active' : ''}`}
             onClick={() => setViewMode('openfoodfacts')}
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
             <Apple size={16} style={{ color: openFoodFacts?.status === 'FOUND' ? 'var(--accent-emerald)' : 'inherit' }} />
-            <span>Open Food Facts</span>
+            <span>Open Food Facts Product Data</span>
             {openFoodFacts?.status === 'FOUND' && (
               <span style={{
                 background: 'rgba(16, 185, 129, 0.2)',
@@ -178,15 +183,6 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                 NOT FOUND
               </span>
             )}
-          </button>
-
-          <button
-            className={`nav-button ${viewMode === 'rules' ? 'active' : ''}`}
-            onClick={() => setViewMode('rules')}
-            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
-          >
-            <FileText size={16} />
-            <span>Legal Rules ({rule_results?.length || 0})</span>
           </button>
 
           <button
@@ -426,9 +422,79 @@ export default function ResultsPage({ scanResult, onNewScan }) {
 
         {/* Right Column: Rule Results / Enrichment / Grid / JSON */}
         <div>
-          {/* TAB 1: LEGAL RULES WITH SYNCHRONIZED SELECTION */}
+          {/* TAB 1: SECTION 1: PACKAGE LABEL ANALYSIS */}
           {viewMode === 'rules' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(93, 143, 111, 0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                      Package Label Analysis
+                    </h3>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      Source: <strong>Uploaded Package Image</strong> (Physical printed label evidence for Legal Metrology compliance)
+                    </div>
+                  </div>
+                  <span style={{
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: 'var(--accent-emerald)',
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em'
+                  }}>
+                    PRIMARY EVIDENCE SOURCE
+                  </span>
+                </div>
+
+                {/* OCR Detected Declarations Overview */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.6rem', marginTop: '0.75rem' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Printed MRP</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: declarations.max_retail_price ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
+                      {declarations.max_retail_price ? `${declarations.max_retail_price.currency || '₹'} ${declarations.max_retail_price.value}` : 'Not Detected'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Net Quantity</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: declarations.net_quantity ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      {declarations.net_quantity ? `${declarations.net_quantity.value} ${declarations.net_quantity.unit}` : 'Not Detected'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Mfg / Pkd Date</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: (declarations.date_of_manufacture?.value || declarations.date_of_manufacture) ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      {declarations.date_of_manufacture?.value || declarations.date_of_manufacture || 'Not Detected'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Country of Origin</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {declarations.country_of_origin?.value || declarations.country_of_origin || 'Domestic (India)'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', gridColumn: 'span 2' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Manufacturer / Packer / Importer</div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {declarations.manufacturer?.name || declarations.manufacturer?.address || 'Not Detected'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', gridColumn: 'span 2' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Consumer Care Details</div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {declarations.consumer_care?.details || declarations.consumer_care?.email || declarations.consumer_care?.phone || 'Not Detected'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {rule_results && rule_results.map((rule, idx) => {
                 const isSelected = selectedRuleId === rule.rule_id;
                 const measurement_item = measurements ? measurements.find(m => m.declaration && rule.title.toLowerCase().includes(m.declaration.toLowerCase())) : null;
@@ -1095,6 +1161,211 @@ export default function ResultsPage({ scanResult, onNewScan }) {
           {viewMode === 'openfoodfacts' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
+              {/* 1. PRIMARY COMPLIANCE: LEGAL METROLOGY PACKAGED COMMODITIES RULE EVALUATION */}
+              <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(93, 143, 111, 0.35)', background: 'var(--panel)' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--sage-deep)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                      Statutory Audit • Legal Metrology Act, 2009
+                    </div>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text)' }}>
+                      <FileText size={22} style={{ color: 'var(--sage-deep)' }} />
+                      <span>LEGAL METROLOGY PACKAGED COMMODITIES RULE EVALUATION</span>
+                    </h2>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '0.25rem' }}>
+                      Rule-by-rule statutory compliance evaluation under the Legal Metrology (Packaged Commodities) Rules, 2011.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{
+                      background: 'rgba(93, 143, 111, 0.12)',
+                      color: 'var(--sage-deep)',
+                      border: '1px solid rgba(93, 143, 111, 0.3)',
+                      padding: '0.35rem 0.8rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700
+                    }}>
+                      {rule_set_version || '2026.1-PC-RULES'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Top Summary Row */}
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem 1.25rem',
+                  alignItems: 'center',
+                  padding: '0.85rem 1.15rem',
+                  background: 'var(--panel-soft)',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border)',
+                  marginBottom: '1.25rem',
+                  fontSize: '0.82rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ color: 'var(--muted)', fontWeight: 600 }}>Rules Checked:</span>
+                    <strong style={{ color: 'var(--text)', fontWeight: 800 }}>{summary?.rules_checked ?? rule_results?.length ?? 0}</strong>
+                  </div>
+                  <span style={{ color: 'var(--border)' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ color: 'var(--muted)', fontWeight: 600 }}>Passed:</span>
+                    <strong style={{ color: 'var(--sage-deep)', fontWeight: 800 }}>{summary?.passed ?? rule_results?.filter(r => r.status === 'PASS').length ?? 0}</strong>
+                  </div>
+                  <span style={{ color: 'var(--border)' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ color: 'var(--muted)', fontWeight: 600 }}>Failed:</span>
+                    <strong style={{ color: '#b55246', fontWeight: 800 }}>{summary?.failed ?? rule_results?.filter(r => r.status === 'FAIL').length ?? 0}</strong>
+                  </div>
+                  <span style={{ color: 'var(--border)' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ color: 'var(--muted)', fontWeight: 600 }}>Warnings:</span>
+                    <strong style={{ color: '#d9a25d', fontWeight: 800 }}>{summary?.warnings ?? rule_results?.filter(r => r.status === 'WARNING').length ?? 0}</strong>
+                  </div>
+                  <span style={{ color: 'var(--border)' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ color: 'var(--muted)', fontWeight: 600 }}>Not Verifiable:</span>
+                    <strong style={{ color: '#5b82a6', fontWeight: 800 }}>{summary?.not_verifiable ?? rule_results?.filter(r => r.status === 'NOT_VERIFIABLE').length ?? 0}</strong>
+                  </div>
+                  <span style={{ color: 'var(--border)' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ color: 'var(--muted)', fontWeight: 600 }}>Not Applicable:</span>
+                    <strong style={{ color: 'var(--muted)', fontWeight: 800 }}>{summary?.not_applicable ?? rule_results?.filter(r => r.status === 'NOT_APPLICABLE').length ?? 0}</strong>
+                  </div>
+                </div>
+
+                {/* Rules Evaluation Table */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="metrology-eval-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '135px' }}>Rule Number</th>
+                        <th style={{ minWidth: '190px' }}>Requirement / Rule</th>
+                        <th style={{ minWidth: '180px' }}>Detected Value</th>
+                        <th style={{ width: '135px', textAlign: 'center' }}>Status</th>
+                        <th style={{ minWidth: '240px' }}>Reason / Legal Basis</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rule_results && rule_results.length > 0 ? (
+                        rule_results.map((rule, idx) => {
+                          let detectedVal = null;
+                          if (rule.normalized_value?.estimated_mm_height) {
+                            detectedVal = `${rule.normalized_value.estimated_mm_height} mm`;
+                          } else if (rule.normalized_value?.value && rule.normalized_value?.unit) {
+                            detectedVal = `${rule.normalized_value.value} ${rule.normalized_value.unit}`;
+                          } else if (rule.normalized_value?.name || rule.normalized_value?.address) {
+                            detectedVal = [rule.normalized_value.name, rule.normalized_value.address].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' • ');
+                          } else if (rule.detected_text && typeof rule.detected_text === 'string' && !rule.detected_text.trim().startsWith('{')) {
+                            detectedVal = rule.detected_text;
+                          } else if (rule.normalized_value?.raw) {
+                            detectedVal = rule.normalized_value.raw;
+                          } else if (rule.detected_text) {
+                            try {
+                              const match = rule.detected_text.match(/['"](?:text|name|raw)['"]\s*:\s*['"]([^'"]+)['"]/);
+                              detectedVal = match ? match[1] : rule.detected_text;
+                            } catch (e) {
+                              detectedVal = rule.detected_text;
+                            }
+                          }
+
+                          return (
+                            <tr key={rule.rule_id || idx}>
+                              <td data-label="Rule Number">
+                                <span className="mono-text" style={{ fontWeight: 800, color: 'var(--sage-deep)', fontSize: '0.88rem' }}>
+                                  {rule.rule_number}
+                                </span>
+                                {rule.mandatory && (
+                                  <span style={{ display: 'inline-block', fontSize: '0.65rem', color: '#b55246', fontWeight: 800, marginLeft: '0.35rem', background: 'rgba(181, 82, 70, 0.1)', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+                                    MANDATORY
+                                  </span>
+                                )}
+                              </td>
+                              <td data-label="Requirement / Rule" style={{ fontWeight: 600, color: 'var(--text)' }}>
+                                {rule.title}
+                              </td>
+                              <td data-label="Detected Value">
+                                {detectedVal ? (
+                                  <span className="mono-text" style={{
+                                    color: 'var(--text)',
+                                    fontWeight: 600,
+                                    background: 'var(--panel-soft)',
+                                    border: '1px solid var(--border)',
+                                    padding: '0.25rem 0.5rem',
+                                    borderRadius: '6px',
+                                    display: 'inline-block',
+                                    wordBreak: 'break-word',
+                                    fontSize: '0.82rem'
+                                  }}>
+                                    {detectedVal}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--muted)', fontStyle: 'italic', fontSize: '0.82rem' }}>
+                                    Not detected
+                                  </span>
+                                )}
+                                {rule.normalized_value?.estimated_mm_height && (
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--sage-deep)', marginTop: '0.2rem', fontWeight: 600 }}>
+                                    Height: {rule.normalized_value.estimated_mm_height} mm (Req: ≥{rule.normalized_value.required_mm_height || 1.0} mm)
+                                  </div>
+                                )}
+                              </td>
+                              <td data-label="Status" style={{ textAlign: 'center' }}>
+                                {rule.status === 'PASS' && (
+                                  <span className="status-pill online" style={{ background: 'rgba(93, 143, 111, 0.15)', color: 'var(--sage-deep)', border: '1px solid rgba(93, 143, 111, 0.35)', fontWeight: 800, fontSize: '0.72rem' }}>
+                                    <CheckCircle2 size={12} /> PASS
+                                  </span>
+                                )}
+                                {rule.status === 'FAIL' && (
+                                  <span className="status-pill offline" style={{ background: 'rgba(181, 82, 70, 0.15)', color: '#b55246', border: '1px solid rgba(181, 82, 70, 0.35)', fontWeight: 800, fontSize: '0.72rem' }}>
+                                    <XCircle size={12} /> FAIL
+                                  </span>
+                                )}
+                                {rule.status === 'WARNING' && (
+                                  <span className="status-pill" style={{ background: 'rgba(217, 162, 93, 0.15)', color: '#d9a25d', border: '1px solid rgba(217, 162, 93, 0.35)', fontWeight: 800, fontSize: '0.72rem' }}>
+                                    <AlertTriangle size={12} /> WARNING
+                                  </span>
+                                )}
+                                {rule.status === 'NOT_VERIFIABLE' && (
+                                  <span className="status-pill" style={{ background: 'rgba(91, 130, 166, 0.15)', color: '#5b82a6', border: '1px solid rgba(91, 130, 166, 0.35)', fontWeight: 800, fontSize: '0.72rem' }}>
+                                    <HelpCircle size={12} /> NOT VERIFIABLE
+                                  </span>
+                                )}
+                                {(!rule.status || rule.status === 'NOT_APPLICABLE') && (
+                                  <span className="status-pill" style={{ background: 'rgba(102, 117, 109, 0.15)', color: 'var(--muted)', border: '1px solid rgba(102, 117, 109, 0.3)', fontWeight: 700, fontSize: '0.72rem' }}>
+                                    NOT APPLICABLE
+                                  </span>
+                                )}
+                              </td>
+                              <td data-label="Reason / Legal Basis">
+                                <div style={{ color: 'var(--text)', fontSize: '0.84rem', lineHeight: '1.45', marginBottom: '0.35rem' }}>
+                                  {rule.reason}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                  <Info size={11} style={{ flexShrink: 0 }} />
+                                  <span>Ref: {rule.source_reference} ({rule.source_title})</span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted)', fontStyle: 'italic' }}>
+                            No Legal Metrology rule results available for this scan.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 2. PRODUCT ENRICHMENT: OPEN FOOD FACTS PRODUCT DATA */}
+
               {/* Section Header & Official Source Attribution */}
               <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
@@ -1104,7 +1375,12 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                       <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>Open Food Facts Product Data</h2>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      Product information retrieved from Open Food Facts • Official API v3 • Decoded Barcode: <strong className="mono-text" style={{ color: 'var(--accent-cyan)' }}>{scanResult.barcode || 'N/A'}</strong>
+                      Product information retrieved from Open Food Facts • Official API v3 • Barcode: <strong className="mono-text" style={{ color: 'var(--accent-cyan)' }}>{scanResult.barcode || 'N/A'}</strong>
+                      {barcodeSourceText && (
+                        <span style={{ marginLeft: '0.5rem', background: 'var(--panel-soft)', border: '1px solid var(--border)', padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--sage-deep)', fontWeight: 700 }}>
+                          {barcodeSourceText}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -1160,9 +1436,9 @@ export default function ResultsPage({ scanResult, onNewScan }) {
               {(!openFoodFacts || openFoodFacts.status === 'NO_BARCODE') && (
                 <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', borderColor: 'rgba(156, 163, 175, 0.3)' }}>
                   <Barcode size={42} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.4rem' }}>Barcode Not Detected</h3>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.4rem' }}>Open Food Facts Product Enrichment Unavailable</h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '500px', margin: '0 auto' }}>
-                    A barcode was not detected in the uploaded package image. Open Food Facts lookup requires a physical barcode decoded directly by the barcode engine.
+                    A barcode was not detected on the label or entered manually. Open Food Facts product enrichment is optional; Legal Metrology printed label compliance evaluation remains fully verified from the uploaded package image.
                   </p>
                 </div>
               )}
@@ -1171,8 +1447,11 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                 <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', borderColor: 'rgba(245, 158, 11, 0.35)' }}>
                   <AlertTriangle size={42} style={{ color: 'var(--accent-amber)', marginBottom: '0.75rem' }} />
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent-amber)', marginBottom: '0.4rem' }}>Product Not Found</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '550px', margin: '0 auto 1.25rem' }}>
-                    Barcode detected (<strong className="mono-text" style={{ color: 'var(--text-primary)' }}>{openFoodFacts.barcode || scanResult.barcode}</strong>), but this product was not found in Open Food Facts.
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '550px', margin: '0 auto 0.6rem' }}>
+                    Barcode (<strong className="mono-text" style={{ color: 'var(--text-primary)' }}>{openFoodFacts.barcode || scanResult.barcode}</strong>) was not found in Open Food Facts.
+                  </p>
+                  <p style={{ color: 'var(--text-dim)', fontSize: '0.82rem', maxWidth: '550px', margin: '0 auto 1.25rem' }}>
+                    Open Food Facts product enrichment unavailable. Legal Metrology compliance scan remains fully evaluated from the uploaded package image.
                   </p>
                   {openFoodFacts.source_url && (
                     <a
@@ -1217,7 +1496,12 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                     <div className="facts-grid">
                       <div className="fact-card">
                         <div className="fact-label"><span>Barcode</span><span className="mono-text" style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>[Open Food Facts]</span></div>
-                        <div className="fact-value mono-text" style={{ fontSize: '1rem', color: 'var(--accent-cyan)' }}>{offProduct.code || 'Not available in Open Food Facts'}</div>
+                        <div className="fact-value mono-text" style={{ fontSize: '1rem', color: 'var(--accent-cyan)' }}>{offProduct.code || scanResult.barcode || 'Not available'}</div>
+                        {barcodeSourceText && (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--sage-deep)', fontWeight: 600, marginTop: '0.25rem' }}>
+                            {barcodeSourceText}
+                          </div>
+                        )}
                       </div>
 
                       <div className="fact-card" style={{ gridColumn: 'span 2' }}>
@@ -1276,111 +1560,57 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                     </div>
                   </div>
 
-                  {/* Nutri-Score & Nutrition Information */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1.5rem', alignItems: 'stretch' }}>
-
-                    {/* Nutri-Score Card */}
-                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div>
-                        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <Tag size={16} style={{ color: 'var(--accent-cyan)' }} />
-                          <span>Nutri-Score Grade</span>
-                        </h4>
-
-                        {offProduct.nutriscore_grade ? (
-                          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', marginBottom: '0.85rem' }}>
-                              {['A', 'B', 'C', 'D', 'E'].map((letter) => {
-                                const isSelected = offProduct.nutriscore_grade.toUpperCase() === letter;
-                                const color = getNutriscoreColor(letter);
-                                return (
-                                  <div
-                                    key={letter}
-                                    style={{
-                                      width: isSelected ? '46px' : '36px',
-                                      height: isSelected ? '54px' : '42px',
-                                      borderRadius: '8px',
-                                      background: isSelected ? color : 'rgba(255,255,255,0.06)',
-                                      color: isSelected ? '#ffffff' : 'var(--text-muted)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      fontWeight: 800,
-                                      fontSize: isSelected ? '1.4rem' : '1rem',
-                                      boxShadow: isSelected ? `0 0 16px ${color}80` : 'none',
-                                      border: isSelected ? `2px solid #ffffff` : '1px solid rgba(255,255,255,0.08)',
-                                      transform: isSelected ? 'scale(1.1)' : 'none',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    {letter}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: getNutriscoreColor(offProduct.nutriscore_grade) }}>
-                              Grade {offProduct.nutriscore_grade.toUpperCase()}
-                              {offProduct.nutriscore_data?.score !== undefined && ` (Score: ${offProduct.nutriscore_data.score})`}
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem', padding: '2rem 0', textAlign: 'center' }}>
-                            Not available in Open Food Facts
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center' }}>
-                        Source: Open Food Facts Nutri-Score calculation
-                      </div>
-                    </div>
-
-                    {/* Nutrition Breakdown Table */}
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-                        Nutrition Facts (per 100g)
+                  {/* Nutrition Information — Product Enrichment */}
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                        <ShoppingBag size={16} style={{ color: 'var(--accent-emerald)' }} />
+                        <span>Nutrition Facts (per 100g)</span>
                       </h4>
-
-                      {offProduct.nutriments ? (
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                                <th style={{ padding: '0.5rem 0.75rem' }}>Nutrient</th>
-                                <th style={{ padding: '0.5rem 0.75rem' }}>Amount</th>
-                                <th style={{ padding: '0.5rem 0.75rem' }}>Source</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[
-                                { label: 'Energy', val: offProduct.nutriments['energy-kcal_100g'] ? `${offProduct.nutriments['energy-kcal_100g']} kcal` : (offProduct.nutriments.energy_100g ? `${offProduct.nutriments.energy_100g} kJ` : null) },
-                                { label: 'Total Fat', val: offProduct.nutriments['fat_100g'] !== undefined ? `${offProduct.nutriments['fat_100g']} g` : null },
-                                { label: 'Saturated Fat', val: offProduct.nutriments['saturated-fat_100g'] !== undefined ? `${offProduct.nutriments['saturated-fat_100g']} g` : null },
-                                { label: 'Carbohydrates', val: offProduct.nutriments['carbohydrates_100g'] !== undefined ? `${offProduct.nutriments['carbohydrates_100g']} g` : null },
-                                { label: 'Sugars', val: offProduct.nutriments['sugars_100g'] !== undefined ? `${offProduct.nutriments['sugars_100g']} g` : null },
-                                { label: 'Proteins', val: offProduct.nutriments['proteins_100g'] !== undefined ? `${offProduct.nutriments['proteins_100g']} g` : null },
-                                { label: 'Salt', val: offProduct.nutriments['salt_100g'] !== undefined ? `${offProduct.nutriments['salt_100g']} g` : null },
-                                { label: 'Sodium', val: offProduct.nutriments['sodium_100g'] !== undefined ? `${offProduct.nutriments['sodium_100g']} g` : null }
-                              ].map((item, nIdx) => (
-                                <tr key={nIdx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                  <td style={{ padding: '0.45rem 0.75rem', fontWeight: 600 }}>{item.label}</td>
-                                  <td style={{ padding: '0.45rem 0.75rem', color: item.val ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: item.val ? 'normal' : 'italic' }}>
-                                    {item.val || 'Not available in Open Food Facts'}
-                                  </td>
-                                  <td style={{ padding: '0.45rem 0.75rem', color: 'var(--accent-cyan)', fontSize: '0.72rem' }}>
-                                    OPEN FOOD FACTS
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem', padding: '1rem 0' }}>
-                          Not available in Open Food Facts
-                        </div>
-                      )}
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                        Source: Open Food Facts Product Enrichment
+                      </span>
                     </div>
+
+                    {offProduct.nutriments ? (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                              <th style={{ padding: '0.5rem 0.75rem' }}>Nutrient</th>
+                              <th style={{ padding: '0.5rem 0.75rem' }}>Amount</th>
+                              <th style={{ padding: '0.5rem 0.75rem' }}>Source</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { label: 'Energy', val: offProduct.nutriments['energy-kcal_100g'] ? `${offProduct.nutriments['energy-kcal_100g']} kcal` : (offProduct.nutriments.energy_100g ? `${offProduct.nutriments.energy_100g} kJ` : null) },
+                              { label: 'Total Fat', val: offProduct.nutriments['fat_100g'] !== undefined ? `${offProduct.nutriments['fat_100g']} g` : null },
+                              { label: 'Saturated Fat', val: offProduct.nutriments['saturated-fat_100g'] !== undefined ? `${offProduct.nutriments['saturated-fat_100g']} g` : null },
+                              { label: 'Carbohydrates', val: offProduct.nutriments['carbohydrates_100g'] !== undefined ? `${offProduct.nutriments['carbohydrates_100g']} g` : null },
+                              { label: 'Sugars', val: offProduct.nutriments['sugars_100g'] !== undefined ? `${offProduct.nutriments['sugars_100g']} g` : null },
+                              { label: 'Proteins', val: offProduct.nutriments['proteins_100g'] !== undefined ? `${offProduct.nutriments['proteins_100g']} g` : null },
+                              { label: 'Salt', val: offProduct.nutriments['salt_100g'] !== undefined ? `${offProduct.nutriments['salt_100g']} g` : null },
+                              { label: 'Sodium', val: offProduct.nutriments['sodium_100g'] !== undefined ? `${offProduct.nutriments['sodium_100g']} g` : null }
+                            ].map((item, nIdx) => (
+                              <tr key={nIdx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td style={{ padding: '0.45rem 0.75rem', fontWeight: 600 }}>{item.label}</td>
+                                <td style={{ padding: '0.45rem 0.75rem', color: item.val ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: item.val ? 'normal' : 'italic' }}>
+                                  {item.val || 'Not available in Open Food Facts'}
+                                </td>
+                                <td style={{ padding: '0.45rem 0.75rem', color: 'var(--accent-cyan)', fontSize: '0.72rem' }}>
+                                  OPEN FOOD FACTS
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem', padding: '1rem 0' }}>
+                        Not available in Open Food Facts
+                      </div>
+                    )}
                   </div>
 
                   {/* Ingredients & Allergens */}
@@ -1656,191 +1886,8 @@ export default function ResultsPage({ scanResult, onNewScan }) {
           )}
         </div>
       </div>
-
-      {/* Developer Forensic Inspection Panel */}
-      <div className="glass-panel" style={{ marginTop: '2.5rem', padding: '1.5rem', border: '1px dashed var(--accent-cyan)', background: 'rgba(0, 10, 25, 0.75)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <Code2 size={20} style={{ color: 'var(--accent-cyan)' }} />
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Developer Forensic Inspection Panel
-            </h3>
-          </div>
-          <span style={{ fontSize: '0.75rem', background: 'rgba(0, 242, 254, 0.15)', color: 'var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 700 }}>
-            LOCAL-FIRST AUDITED SCAN PIPELINE
-          </span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', fontSize: '0.82rem' }}>
-          {/* IMAGE */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>IMAGE</div>
-            <div><strong>Filename:</strong> <span className="mono-text" style={{ fontSize: '0.75rem' }}>{scanResult.debug?.IMAGE?.filename || filename || 'N/A'}</span></div>
-            <div><strong>Dimensions:</strong> {scanResult.debug?.IMAGE?.dimensions || scanResult.debug?.image_dimensions || 'N/A'}</div>
-            <div><strong>Format:</strong> {scanResult.debug?.IMAGE?.format || 'JPEG'}</div>
-            {scanResult.debug?.IMAGE?.size_bytes && <div><strong>Size:</strong> {(scanResult.debug.IMAGE.size_bytes / 1024).toFixed(1)} KB</div>}
-          </div>
-
-          {/* LOCAL OCR */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>LOCAL OCR</div>
-            <div><strong>Provider:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>Tesseract</span></div>
-            <div><strong>Status:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>ACTIVE</span></div>
-            <div><strong>Executed:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>YES</span></div>
-            <div><strong>Detections:</strong> <span style={{ color: (scanResult.ocr_detections?.length || scanResult.debug?.["LOCAL OCR"]?.detections_count || 0) > 0 ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 700 }}>{scanResult.ocr_detections?.length ?? scanResult.debug?.["LOCAL OCR"]?.detections_count ?? 0}</span></div>
-            <div><strong>Orientation:</strong> <span className="mono-text" style={{ color: 'var(--accent-cyan)' }}>{scanResult.best_orientation ?? scanResult.debug?.["LOCAL OCR"]?.best_orientation ?? 0}°</span></div>
-            <div><strong>Characters:</strong> {scanResult.debug?.["LOCAL OCR"]?.characters_extracted ?? scanResult.raw_ocr_text?.length ?? 0}</div>
-            {((scanResult.ocr_detections?.length ?? scanResult.debug?.["LOCAL OCR"]?.detections_count ?? 0) === 0) && (
-              <div style={{ color: 'var(--accent-amber)', fontSize: '0.72rem', marginTop: '0.3rem', fontStyle: 'italic' }}>
-                OCR executed but no reliable text was extracted.
-              </div>
-            )}
-          </div>
-
-          {/* OPENAI VISION */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>OPENAI VISION (OPTIONAL)</div>
-            <div><strong>Attempted:</strong> {scanResult.debug?.["OPENAI VISION"]?.attempted ? 'TRUE' : 'FALSE'}</div>
-            <div><strong>Available:</strong> {scanResult.debug?.["OPENAI VISION"]?.available ? 'TRUE' : 'FALSE'}</div>
-            <div><strong>Status:</strong> <span style={{ color: scanResult.debug?.["OPENAI VISION"]?.status === 'SUCCESS' ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 700 }}>{scanResult.debug?.["OPENAI VISION"]?.status || 'UNAVAILABLE'}</span></div>
-            {scanResult.debug?.["OPENAI VISION"]?.error && (
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginTop: '0.3rem', wordBreak: 'break-word' }}>
-                <strong>Note:</strong> {scanResult.debug["OPENAI VISION"].error}
-              </div>
-            )}
-          </div>
-
-          {/* BARCODE */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>BARCODE DECODER</div>
-            <div><strong>Attempted:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>TRUE</span></div>
-            <div><strong>Detected:</strong> <span style={{ color: (scanResult.debug?.BARCODE?.detected || (scanResult.barcode && scanResult.barcode !== 'NOT_DETECTED')) ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 700 }}>{(scanResult.debug?.BARCODE?.detected || (scanResult.barcode && scanResult.barcode !== 'NOT_DETECTED')) ? 'TRUE' : 'FALSE'}</span></div>
-            <div><strong>Format:</strong> {scanResult.debug?.BARCODE?.format || scanResult.barcode_decoding?.format || 'N/A'}</div>
-            <div><strong>Value:</strong> <span className="mono-text" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{scanResult.debug?.BARCODE?.value || scanResult.barcode || 'null'}</span></div>
-            <div><strong>Checksum Valid:</strong> <span style={{ color: scanResult.debug?.BARCODE?.checksum_valid ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 700 }}>{scanResult.debug?.BARCODE?.checksum_valid ? 'TRUE' : (scanResult.debug?.BARCODE?.detected ? 'FALSE' : 'N/A')}</span></div>
-          </div>
-
-          {/* ENRICHMENT */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>ENRICHMENT (OPTIONAL)</div>
-            <div><strong>Attempted:</strong> {scanResult.debug?.ENRICHMENT?.attempted ? 'TRUE' : 'FALSE'}</div>
-            <div><strong>Status:</strong> <span style={{ color: scanResult.debug?.ENRICHMENT?.status === 'SUCCESS' ? 'var(--accent-emerald)' : 'var(--text-muted)', fontWeight: 700 }}>{scanResult.debug?.ENRICHMENT?.status || 'SKIPPED'}</span></div>
-            <div><strong>Product Identified:</strong> {scanResult.debug?.ENRICHMENT?.product_identified ? 'TRUE' : 'FALSE'}</div>
-          </div>
-
-          {/* WEB RESEARCH (GOOGLE) */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>WEB RESEARCH (GOOGLE)</div>
-            <div><strong>Provider:</strong> <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>Google Web Search</span></div>
-            <div><strong>Status:</strong> <span style={{ color: (scanResult.debug?.["WEB RESEARCH"]?.status || webResearch?.status) === 'COMPLETE' ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 700 }}>{scanResult.debug?.["WEB RESEARCH"]?.status || webResearch?.status || 'UNAVAILABLE'}</span></div>
-            <div><strong>Queries Executed:</strong> {scanResult.debug?.["WEB RESEARCH"]?.queries_executed ?? webResearch?.queries_run ?? 0}</div>
-            <div><strong>Results Found:</strong> {scanResult.debug?.["WEB RESEARCH"]?.results_found ?? webResearch?.results_found ?? 0}</div>
-            <div><strong>Pages Reviewed:</strong> {scanResult.debug?.["WEB RESEARCH"]?.pages_reviewed ?? webResearch?.pages_fetched ?? 0}</div>
-            <div><strong>Sources Used:</strong> {scanResult.debug?.["WEB RESEARCH"]?.sources_used ?? webResearch?.sources_used ?? 0}</div>
-          </div>
-
-          {/* RULE ENGINE */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>RULE ENGINE</div>
-            <div><strong>Rules Evaluated:</strong> {scanResult.debug?.["RULE ENGINE"]?.rules_evaluated ?? summary?.rules_checked ?? 0}</div>
-            <div><strong>Passed:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>{scanResult.debug?.["RULE ENGINE"]?.passed ?? summary?.passed ?? 0}</span></div>
-            <div><strong>Failed:</strong> <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>{scanResult.debug?.["RULE ENGINE"]?.failed ?? summary?.failed ?? 0}</span></div>
-            <div><strong>Not Verifiable:</strong> <span style={{ color: '#f59e0b', fontWeight: 700 }}>{scanResult.debug?.["RULE ENGINE"]?.not_verifiable ?? summary?.not_verifiable ?? 0}</span></div>
-          </div>
-
-          {/* OPEN FOOD FACTS */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>OPEN FOOD FACTS</div>
-            <div><strong>Configured:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>YES</span></div>
-            <div><strong>Request attempted:</strong> <span style={{ color: (scanResult.debug?.["OPEN FOOD FACTS"]?.request_attempted ?? (openFoodFacts && openFoodFacts.status !== 'NO_BARCODE')) ? 'var(--accent-emerald)' : 'var(--text-muted)', fontWeight: 700 }}>{(scanResult.debug?.["OPEN FOOD FACTS"]?.request_attempted ?? (openFoodFacts && openFoodFacts.status !== 'NO_BARCODE')) ? 'YES' : 'NO'}</span></div>
-            <div><strong>Status:</strong> <span style={{ color: openFoodFacts?.status === 'FOUND' ? 'var(--accent-emerald)' : (openFoodFacts?.status === 'NOT_FOUND' ? 'var(--accent-amber)' : 'var(--text-muted)'), fontWeight: 700 }}>{scanResult.debug?.["OPEN FOOD FACTS"]?.status || openFoodFacts?.status || 'NO_BARCODE'}</span></div>
-            <div><strong>Barcode used:</strong> <span className="mono-text" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{scanResult.debug?.["OPEN FOOD FACTS"]?.barcode_used || scanResult.barcode || 'None'}</span></div>
-            <div><strong>Response received:</strong> <span style={{ color: (scanResult.debug?.["OPEN FOOD FACTS"]?.response_received ?? (openFoodFacts && ['FOUND', 'NOT_FOUND'].includes(openFoodFacts.status))) ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 700 }}>{(scanResult.debug?.["OPEN FOOD FACTS"]?.response_received ?? (openFoodFacts && ['FOUND', 'NOT_FOUND'].includes(openFoodFacts.status))) ? 'YES' : 'NO'}</span></div>
-          </div>
-
-          {/* DATA INTEGRITY */}
-          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>DATA INTEGRITY</div>
-            <div><strong>Mock Used:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>FALSE</span></div>
-            <div><strong>Synthetic Data:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>FALSE</span></div>
-            <div><strong>Mode:</strong> <span className="mono-text" style={{ color: 'var(--accent-cyan)' }}>{scanResult.debug?.labelsure_mode || 'production'}</span></div>
-          </div>
-        </div>
-
-        {/* SECTION 12: CANDIDATE DECLARATIONS FORENSIC PANEL */}
-        <div style={{ marginTop: '1.2rem', background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.6rem', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            CANDIDATE DECLARATIONS (EXTRACTED SIGNALS)
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.8rem' }}>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>Manufacturer:</span>{' '}
-              <span style={{ color: scanResult.candidate_declarations?.manufacturer ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 600 }}>
-                {scanResult.candidate_declarations?.manufacturer || '[Not detected in uploaded surface]'}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>MRP:</span>{' '}
-              <span style={{ color: scanResult.candidate_declarations?.mrp ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 600 }}>
-                {scanResult.candidate_declarations?.mrp || '[Not detected in uploaded surface]'}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>Net Quantity:</span>{' '}
-              <span style={{ color: scanResult.candidate_declarations?.net_quantity ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 600 }}>
-                {scanResult.candidate_declarations?.net_quantity || '[Not detected in uploaded surface]'}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>Date:</span>{' '}
-              <span style={{ color: scanResult.candidate_declarations?.date ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 600 }}>
-                {scanResult.candidate_declarations?.date || '[Not detected in uploaded surface]'}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>Consumer Care:</span>{' '}
-              <span style={{ color: scanResult.candidate_declarations?.consumer_care ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 600 }}>
-                {scanResult.candidate_declarations?.consumer_care || '[Not detected in uploaded surface]'}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>Country:</span>{' '}
-              <span style={{ color: scanResult.candidate_declarations?.country ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 600 }}>
-                {scanResult.candidate_declarations?.country || '[Not detected in uploaded surface]'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 1 & 12: RAW OCR TEXT FORENSIC PANEL */}
-        <div style={{ marginTop: '1.2rem', background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              RAW OCR TEXT (TESSERACT EXTRACTION FORENSIC)
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Characters: <strong>{scanResult.raw_ocr_text?.length || scanResult.debug?.["LOCAL OCR"]?.characters_extracted || 0}</strong> • Words: <strong>{(scanResult.raw_ocr_text || "").split(/\s+/).filter(Boolean).length}</strong> • Detections: <strong>{scanResult.ocr_detections?.length || scanResult.debug?.["LOCAL OCR"]?.detections_count || 0}</strong>
-            </div>
-          </div>
-          <pre style={{
-            background: 'rgba(10, 14, 23, 0.9)',
-            padding: '0.85rem',
-            borderRadius: '6px',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
-            maxHeight: '220px',
-            overflowY: 'auto',
-            fontFamily: 'monospace',
-            fontSize: '0.78rem',
-            color: (scanResult.raw_ocr_text || scanResult.all_detected_text) ? 'var(--accent-cyan)' : 'var(--accent-amber)',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            margin: 0
-          }}>
-            {(scanResult.raw_ocr_text || scanResult.all_detected_text) || '[OCR executed but no reliable text was extracted from this image]'}
-          </pre>
-        </div>
-      </div>
     </div>
   );
 }
+
 

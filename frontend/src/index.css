@@ -1121,3 +1121,73 @@ pre.json-view {
     grid-template-columns: 1fr;
   }
 }
+
+/* Legal Metrology Evaluation Table */
+.metrology-eval-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.metrology-eval-table th {
+  padding: 0.8rem 1rem;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.metrology-eval-table td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.metrology-eval-table tr:last-child td {
+  border-bottom: none;
+}
+
+.metrology-eval-table tr:hover td {
+  background: rgba(122, 167, 126, 0.04);
+}
+
+@media (max-width: 860px) {
+  .metrology-eval-table thead {
+    display: none;
+  }
+  .metrology-eval-table,
+  .metrology-eval-table tbody,
+  .metrology-eval-table tr,
+  .metrology-eval-table td {
+    display: block;
+    width: 100%;
+  }
+  .metrology-eval-table tr {
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--panel);
+    padding: 1rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  }
+  .metrology-eval-table td {
+    padding: 0.45rem 0;
+    border: none;
+    text-align: left !important;
+  }
+  .metrology-eval-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.2rem;
+    letter-spacing: 0.04em;
+  }
+}
+
