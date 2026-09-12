@@ -8,6 +8,6 @@
     "dev:all": "node start-all.js",
     "build": "npm --prefix frontend run build",
     "start:backend": "python backend/app.py",
-    "test:backend": "python backend/test_suite.py && python backend/test_enrichment.py && python backend/test_measurement_annotation.py"
+    "test:backend": "python backend/test_suite.py && python backend/test_enrichment.py && python backend/test_measurement_annotation.py && python backend/test_openfoodfacts.py"
   }
 }

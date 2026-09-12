@@ -21,6 +21,7 @@ from report_generator import ReportGenerator
 from barcode_decoder import decode_barcode
 from local_ocr_service import LocalOCRService
 from web_research_service import WebResearchManager
+from openfoodfacts_service import OpenFoodFactsService
 
 UPLOADS_DIR = os.path.join(BASE_DIR, 'uploads')
 ANNOTATED_UPLOADS_DIR = os.path.join(UPLOADS_DIR, 'annotated')
@@ -73,6 +74,7 @@ enrichment_service = ProductEnrichmentService()
 measurement_service = MeasurementService()
 annotation_service = AnnotationService()
 report_generator = ReportGenerator(REPORTS_DIR)
+openfoodfacts_service = OpenFoodFactsService()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'bmp', 'tiff'}
 
@@ -97,7 +99,8 @@ def health_check():
         "enrichment_provider": os.environ.get("PRODUCT_ENRICHMENT_PROVIDER", "openai"),
         "web_research_provider": web_research_manager.provider.provider_name,
         "web_research_configured": "YES" if web_research_manager.provider.is_available() else "NO",
-        "version": "7.0.0-WEB-RESEARCH"
+        "openfoodfacts_provider": "Open Food Facts API v2",
+        "version": "7.1.0-OFF-INTEGRATION"
     }), 200
 
 @app.route('/api/diagnostic', methods=['GET'])
@@ -306,6 +309,33 @@ def scan_image():
             scan_id=scan_id
         )
 
+        # Step 9: Open Food Facts Product Lookup (Strictly from real barcode decoder)
+        decoded_barcode = barcode_decoding_result.get("barcode") if barcode_decoding_result.get("detected") else None
+        off_result = {
+            "available": False,
+            "status": "NO_BARCODE",
+            "barcode": None,
+            "source": "OPEN_FOOD_FACTS",
+            "message": "Barcode not detected"
+        }
+        off_cross_check = {"available": False, "reason": "No barcode detected for Open Food Facts lookup."}
+
+        if decoded_barcode:
+            try:
+                off_result = openfoodfacts_service.get_product_by_barcode(decoded_barcode)
+                off_cross_check = openfoodfacts_service.cross_check_with_ocr(declarations, off_result)
+            except Exception as off_err:
+                app.logger.warning(f"Open Food Facts lookup failed gracefully: {off_err}")
+                off_result = {
+                    "available": False,
+                    "status": "UNAVAILABLE",
+                    "barcode": decoded_barcode,
+                    "source": "OPEN_FOOD_FACTS",
+                    "message": "Open Food Facts service is currently unavailable."
+                }
+                off_cross_check = {"available": False, "reason": "Open Food Facts service unavailable."}
+        off_result["cross_check"] = off_cross_check
+
         # Dual OCR cross check details
         ocr_cross_check = {"available": False, "reason": "Local Tesseract OCR executed independently"}
         if openai_facts and openai_status == "SUCCESS":
@@ -401,6 +431,12 @@ def scan_image():
                 "pages_reviewed": web_research_result.get("pages_fetched", 0),
                 "sources_used": web_research_result.get("sources_used", 0)
             },
+            "OPEN FOOD FACTS": {
+                "status": off_result.get("status"),
+                "barcode": decoded_barcode,
+                "product_found": bool(off_result.get("status") == "FOUND"),
+                "source_url": off_result.get("source_url")
+            },
             "RULE ENGINE": {
                 "rules_evaluated": len(rule_results),
                 "passed": compliance_result["summary"]["passed"],
@@ -458,6 +494,8 @@ def scan_image():
             "product_enrichment": enrichment_result,
             "cross_check": cross_check_result,
             "web_research": web_research_result,
+            "openfoodfacts": off_result,
+            "openfoodfacts_cross_check": off_cross_check,
             "ocr_cross_check": ocr_cross_check,
             "all_detected_text": raw_facts.get("all_detected_text", ""),
             "raw_ocr_text": raw_facts.get("raw_ocr_text", ""),
@@ -507,6 +545,10 @@ def scan_image():
             annotated_image_url=annotated_url,
             report_path=pdf_path,
             web_research=web_research_result,
+            openfoodfacts_status=off_result.get("status"),
+            openfoodfacts_product=off_result.get("product"),
+            openfoodfacts_source_url=off_result.get("source_url"),
+            openfoodfacts_retrieved_at=off_result.get("retrieved_at"),
             status="COMPLETED"
         )
 
@@ -524,6 +566,43 @@ def scan_image():
         return jsonify({
             "error": "Failed to process image scan",
             "details": str(e)
+        }), 500
+
+@app.route('/api/openfoodfacts/<barcode>', methods=['GET'])
+def get_openfoodfacts_endpoint(barcode):
+    """
+    Open Food Facts Product-by-Barcode Lookup API.
+    Handles: FOUND, NOT_FOUND, UNAVAILABLE, INVALID_BARCODE.
+    """
+    try:
+        bypass_cache = request.args.get('bypass_cache', '').lower() in ['true', '1', 'yes']
+        res = openfoodfacts_service.get_product_by_barcode(barcode, bypass_cache=bypass_cache)
+        status_code = 200
+        if res.get("status") == "INVALID_BARCODE":
+            status_code = 400
+        elif res.get("status") == "NOT_FOUND":
+            status_code = 404
+        elif res.get("status") == "UNAVAILABLE":
+            status_code = 503
+        return jsonify({
+            "success": bool(res.get("available", False)),
+            "source": "OPEN_FOOD_FACTS",
+            "barcode": barcode,
+            "status": res.get("status"),
+            "product": res.get("product"),
+            "source_url": res.get("source_url"),
+            "retrieved_at": res.get("retrieved_at"),
+            "disclaimer": res.get("disclaimer"),
+            "data": res
+        }), status_code
+    except Exception as e:
+        app.logger.error(f"Error in /api/openfoodfacts/{barcode}: {e}")
+        return jsonify({
+            "success": False,
+            "source": "OPEN_FOOD_FACTS",
+            "barcode": barcode,
+            "status": "UNAVAILABLE",
+            "error": str(e)
         }), 500
 
 @app.route('/api/scans', methods=['GET'])

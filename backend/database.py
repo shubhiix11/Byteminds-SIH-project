@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
 DB_PATH = os.path.join(DATA_DIR, 'labelsure.db')
@@ -64,7 +64,11 @@ def init_db():
         ("original_image_url", "TEXT"),
         ("annotated_image_url", "TEXT"),
         ("report_path", "TEXT"),
-        ("web_research", "TEXT")
+        ("web_research", "TEXT"),
+        ("openfoodfacts_status", "TEXT"),
+        ("openfoodfacts_product", "TEXT"),
+        ("openfoodfacts_source_url", "TEXT"),
+        ("openfoodfacts_retrieved_at", "TEXT")
     ]
 
     for col_name, col_type in new_columns:
@@ -84,24 +88,27 @@ def save_scan(filename, file_path, extracted_facts, status="COMPLETED", scan_id=
               product_enrichment=None, cross_check=None, rule_results=None,
               summary_counts=None, measurements=None, annotations=None,
               original_image_url=None, annotated_image_url=None, report_path=None,
-              web_research=None):
+              web_research=None, openfoodfacts_status=None, openfoodfacts_product=None,
+              openfoodfacts_source_url=None, openfoodfacts_retrieved_at=None):
     
     init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
     
     if not scan_id:
-        scan_id = f"SCAN_{int(datetime.utcnow().timestamp() * 1000)}"
+        scan_id = f"SCAN_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
 
-    created_at = datetime.utcnow().isoformat() + 'Z'
+    created_at = datetime.now(timezone.utc).isoformat() + 'Z'
 
     cursor.execute('''
         INSERT OR REPLACE INTO scans (
             scan_id, filename, file_path, product_name, brand, category, barcode, manufacturer,
             location, inspector, overall_status, measurement_method, extracted_facts,
             product_enrichment, cross_check, rule_results, summary_counts, measurements,
-            annotations, original_image_url, annotated_image_url, report_path, web_research, status, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            annotations, original_image_url, annotated_image_url, report_path, web_research,
+            openfoodfacts_status, openfoodfacts_product, openfoodfacts_source_url, openfoodfacts_retrieved_at,
+            status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         scan_id, filename, file_path,
         product_name or "Unknown Commodity",
@@ -119,6 +126,10 @@ def save_scan(filename, file_path, extracted_facts, status="COMPLETED", scan_id=
         json.dumps(annotations) if isinstance(annotations, (dict, list)) else annotations,
         original_image_url, annotated_image_url, report_path,
         json.dumps(web_research) if isinstance(web_research, (dict, list)) else web_research,
+        openfoodfacts_status,
+        json.dumps(openfoodfacts_product) if isinstance(openfoodfacts_product, (dict, list)) else openfoodfacts_product,
+        openfoodfacts_source_url,
+        openfoodfacts_retrieved_at,
         status, created_at
     ))
 
@@ -279,6 +290,10 @@ def _parse_scan_row(r):
         'annotated_image_url': r['annotated_image_url'] if 'annotated_image_url' in keys else None,
         'report_path': r['report_path'] if 'report_path' in keys else None,
         'web_research': safe_json(r['web_research'] if 'web_research' in keys else None),
+        'openfoodfacts_status': r['openfoodfacts_status'] if 'openfoodfacts_status' in keys else None,
+        'openfoodfacts_product': safe_json(r['openfoodfacts_product'] if 'openfoodfacts_product' in keys else None),
+        'openfoodfacts_source_url': r['openfoodfacts_source_url'] if 'openfoodfacts_source_url' in keys else None,
+        'openfoodfacts_retrieved_at': r['openfoodfacts_retrieved_at'] if 'openfoodfacts_retrieved_at' in keys else None,
         'status': r['status'],
         'created_at': r['created_at']
     }

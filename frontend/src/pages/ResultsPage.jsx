@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Tag, Calendar, Building, PhoneCall, Globe, Code2, LayoutGrid, CheckCircle2, XCircle, AlertTriangle, HelpCircle, ArrowLeft, Info, FileText, Barcode, Check, AlertCircle, Layers, Eye, ExternalLink, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Package, Tag, Calendar, Building, PhoneCall, Globe, Code2, LayoutGrid, CheckCircle2, XCircle, AlertTriangle, HelpCircle, ArrowLeft, Info, FileText, Barcode, Check, AlertCircle, Layers, Eye, ExternalLink, Search, ChevronDown, ChevronUp, Apple, ShoppingBag } from 'lucide-react';
 import { getUploadUrl } from '../services/api';
 
 const STATUS_COLOR_MAP = {
@@ -43,6 +43,28 @@ export default function ResultsPage({ scanResult, onNewScan }) {
   const declarations = detected_declarations || scanResult.extracted_facts?.declarations || {};
   const enrichmentData = product_enrichment?.enrichment || scanResult.enrichment?.enrichment || {};
   const webResearch = web_research || scanResult.webResearch || {};
+  const openFoodFacts = scanResult.openfoodfacts || (scanResult.openfoodfacts_product ? {
+    available: scanResult.openfoodfacts_status === 'FOUND',
+    status: scanResult.openfoodfacts_status,
+    product: scanResult.openfoodfacts_product,
+    source_url: scanResult.openfoodfacts_source_url,
+    retrieved_at: scanResult.openfoodfacts_retrieved_at,
+    cross_check: scanResult.openfoodfacts_cross_check
+  } : null);
+  const offProduct = openFoodFacts?.product || null;
+  const offCrossCheck = openFoodFacts?.cross_check || scanResult.openfoodfacts_cross_check || null;
+
+  const getNutriscoreColor = (grade) => {
+    switch ((grade || '').toUpperCase()) {
+      case 'A': return '#038141';
+      case 'B': return '#85bb2f';
+      case 'C': return '#fecb02';
+      case 'D': return '#ee8100';
+      case 'E': return '#e63e11';
+      default: return '#9ca3af';
+    }
+  };
+
   const activeImageUrl = imageTab === 'annotated' && annotated_image_url ? annotated_image_url : (original_image_url || image_url);
 
   const getStatusBadge = (status) => {
@@ -137,6 +159,39 @@ export default function ResultsPage({ scanResult, onNewScan }) {
           >
             <Barcode size={16} />
             <span>Product & Barcode</span>
+          </button>
+
+          <button
+            className={`nav-button ${viewMode === 'openfoodfacts' ? 'active' : ''}`}
+            onClick={() => setViewMode('openfoodfacts')}
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <Apple size={16} style={{ color: openFoodFacts?.status === 'FOUND' ? 'var(--accent-emerald)' : 'inherit' }} />
+            <span>Open Food Facts</span>
+            {openFoodFacts?.status === 'FOUND' && (
+              <span style={{
+                background: 'rgba(16, 185, 129, 0.2)',
+                color: 'var(--accent-emerald)',
+                fontSize: '0.62rem',
+                padding: '0.1rem 0.4rem',
+                borderRadius: '4px',
+                fontWeight: 800
+              }}>
+                FOUND
+              </span>
+            )}
+            {openFoodFacts?.status === 'NOT_FOUND' && (
+              <span style={{
+                background: 'rgba(245, 158, 11, 0.2)',
+                color: 'var(--accent-amber)',
+                fontSize: '0.62rem',
+                padding: '0.1rem 0.4rem',
+                borderRadius: '4px',
+                fontWeight: 700
+              }}>
+                NOT FOUND
+              </span>
+            )}
           </button>
 
           <button
@@ -1026,6 +1081,532 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                   <strong>Informational & Evidence Layer Only:</strong> Web research results provide market intelligence and evidence corroboration. Under the Legal Metrology (Packaged Commodities) Rules, final compliance verdicts are strictly determined by declarations physically present on the package label.
                 </span>
               </div>
+
+            </div>
+          )}
+
+          {/* TAB: OPEN FOOD FACTS PRODUCT DATA */}
+          {viewMode === 'openfoodfacts' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+              {/* Section Header & Official Source Attribution */}
+              <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                      <Apple size={24} style={{ color: 'var(--accent-emerald)' }} />
+                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>Open Food Facts Product Data</h2>
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      Community-driven product database integration via official API v2 • Decoded Barcode: <strong className="mono-text" style={{ color: 'var(--accent-cyan)' }}>{scanResult.barcode || 'N/A'}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.4)',
+                      color: 'var(--accent-emerald)',
+                      padding: '0.35rem 0.85rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.04em'
+                    }}>
+                      SOURCE: OPEN FOOD FACTS
+                    </div>
+
+                    {openFoodFacts?.source_url && (
+                      <a
+                        href={openFoodFacts.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary"
+                        style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      >
+                        <span>View on Open Food Facts</span>
+                        <ExternalLink size={13} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Subtitle & Legal Disclaimer (Requirement 8 & 11) */}
+                <div style={{
+                  background: 'rgba(0, 242, 254, 0.06)',
+                  border: '1px solid rgba(0, 242, 254, 0.2)',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.78rem',
+                  color: 'var(--accent-cyan)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <Info size={16} style={{ flexShrink: 0 }} />
+                  <span>
+                    <strong>Community Source Notice:</strong> Open Food Facts is a community-maintained product database. Information is not government verified. Legal Metrology compliance verdicts are strictly determined by physical declarations on the package label.
+                  </span>
+                </div>
+              </div>
+
+              {/* Status State Cards */}
+              {(!openFoodFacts || openFoodFacts.status === 'NO_BARCODE') && (
+                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', borderColor: 'rgba(156, 163, 175, 0.3)' }}>
+                  <Barcode size={42} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.4rem' }}>Barcode Not Detected</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '500px', margin: '0 auto' }}>
+                    A barcode was not detected in the uploaded package image. Open Food Facts lookup requires a physical barcode decoded directly by the barcode engine.
+                  </p>
+                </div>
+              )}
+
+              {openFoodFacts && openFoodFacts.status === 'NOT_FOUND' && (
+                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', borderColor: 'rgba(245, 158, 11, 0.35)' }}>
+                  <AlertTriangle size={42} style={{ color: 'var(--accent-amber)', marginBottom: '0.75rem' }} />
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent-amber)', marginBottom: '0.4rem' }}>Product Not Found</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '550px', margin: '0 auto 1.25rem' }}>
+                    Barcode detected (<strong className="mono-text" style={{ color: 'var(--text-primary)' }}>{openFoodFacts.barcode || scanResult.barcode}</strong>), but this product was not found in Open Food Facts.
+                  </p>
+                  {openFoodFacts.source_url && (
+                    <a
+                      href={openFoodFacts.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-primary"
+                      style={{ padding: '0.45rem 1rem', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                      <span>Check Open Food Facts Database</span>
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {openFoodFacts && openFoodFacts.status === 'UNAVAILABLE' && (
+                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', borderColor: 'rgba(244, 63, 94, 0.35)' }}>
+                  <AlertCircle size={42} style={{ color: 'var(--accent-rose)', marginBottom: '0.75rem' }} />
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent-rose)', marginBottom: '0.4rem' }}>Service Temporarily Unavailable</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '550px', margin: '0 auto' }}>
+                    Open Food Facts API could not be reached. Local OCR extraction and Legal Metrology compliance screening continue normally.
+                  </p>
+                </div>
+              )}
+
+              {/* FOUND PRODUCT DATA */}
+              {openFoodFacts && openFoodFacts.status === 'FOUND' && offProduct && (
+                <>
+                  {/* Primary Product Specifications Grid */}
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ShoppingBag size={18} style={{ color: 'var(--accent-emerald)' }} />
+                        <span>Core Product Specifications</span>
+                      </h3>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                        Retrieved: {openFoodFacts.retrieved_at ? new Date(openFoodFacts.retrieved_at).toLocaleString() : 'Just now'}
+                      </span>
+                    </div>
+
+                    <div className="facts-grid">
+                      <div className="fact-card">
+                        <div className="fact-label"><span>Barcode</span><span className="mono-text" style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>[Open Food Facts]</span></div>
+                        <div className="fact-value mono-text" style={{ fontSize: '1rem', color: 'var(--accent-cyan)' }}>{offProduct.code || 'Not available in Open Food Facts'}</div>
+                      </div>
+
+                      <div className="fact-card" style={{ gridColumn: 'span 2' }}>
+                        <div className="fact-label"><span>Product Name</span><span style={{ fontSize: '0.65rem', color: 'var(--accent-emerald)' }}>[Open Food Facts]</span></div>
+                        <div className="fact-value" style={{ fontSize: '1.1rem', fontWeight: 700, color: offProduct.product_name ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                          {offProduct.product_name || 'Not available in Open Food Facts'}
+                        </div>
+                        {offProduct.generic_name && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                            Generic: {offProduct.generic_name}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="fact-card">
+                        <div className="fact-label"><span>Brand</span><span style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)' }}>[Open Food Facts]</span></div>
+                        <div className="fact-value" style={{ color: offProduct.brands ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                          {offProduct.brands || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+
+                      <div className="fact-card">
+                        <div className="fact-label"><span>Category</span></div>
+                        <div className="fact-value" style={{ color: offProduct.categories ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                          {offProduct.categories || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+
+                      <div className="fact-card">
+                        <div className="fact-label"><span>Quantity / Pack Size</span></div>
+                        <div className="fact-value" style={{ color: offProduct.quantity ? 'var(--accent-amber)' : 'var(--text-muted)' }}>
+                          {offProduct.quantity || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+
+                      <div className="fact-card">
+                        <div className="fact-label"><span>Packaging</span></div>
+                        <div className="fact-value" style={{ color: offProduct.packaging ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                          {offProduct.packaging || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+
+                      <div className="fact-card">
+                        <div className="fact-label"><span>Countries</span></div>
+                        <div className="fact-value" style={{ color: offProduct.countries ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                          {offProduct.countries || (offProduct.countries_hierarchy?.join(', ')) || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+
+                      <div className="fact-card">
+                        <div className="fact-label"><span>Manufacturing Places</span></div>
+                        <div className="fact-value" style={{ color: offProduct.manufacturing_places ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                          {offProduct.manufacturing_places || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nutri-Score & Nutrition Information */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1.5rem', alignItems: 'stretch' }}>
+
+                    {/* Nutri-Score Card */}
+                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Tag size={16} style={{ color: 'var(--accent-cyan)' }} />
+                          <span>Nutri-Score Grade</span>
+                        </h4>
+
+                        {offProduct.nutriscore_grade ? (
+                          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', marginBottom: '0.85rem' }}>
+                              {['A', 'B', 'C', 'D', 'E'].map((letter) => {
+                                const isSelected = offProduct.nutriscore_grade.toUpperCase() === letter;
+                                const color = getNutriscoreColor(letter);
+                                return (
+                                  <div
+                                    key={letter}
+                                    style={{
+                                      width: isSelected ? '46px' : '36px',
+                                      height: isSelected ? '54px' : '42px',
+                                      borderRadius: '8px',
+                                      background: isSelected ? color : 'rgba(255,255,255,0.06)',
+                                      color: isSelected ? '#ffffff' : 'var(--text-muted)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontWeight: 800,
+                                      fontSize: isSelected ? '1.4rem' : '1rem',
+                                      boxShadow: isSelected ? `0 0 16px ${color}80` : 'none',
+                                      border: isSelected ? `2px solid #ffffff` : '1px solid rgba(255,255,255,0.08)',
+                                      transform: isSelected ? 'scale(1.1)' : 'none',
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                  >
+                                    {letter}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: getNutriscoreColor(offProduct.nutriscore_grade) }}>
+                              Grade {offProduct.nutriscore_grade.toUpperCase()}
+                              {offProduct.nutriscore_data?.score !== undefined && ` (Score: ${offProduct.nutriscore_data.score})`}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem', padding: '2rem 0', textAlign: 'center' }}>
+                            Not available in Open Food Facts
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center' }}>
+                        Source: Open Food Facts Nutri-Score calculation
+                      </div>
+                    </div>
+
+                    {/* Nutrition Breakdown Table */}
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+                        Nutrition Facts (per 100g)
+                      </h4>
+
+                      {offProduct.nutriments ? (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                                <th style={{ padding: '0.5rem 0.75rem' }}>Nutrient</th>
+                                <th style={{ padding: '0.5rem 0.75rem' }}>Amount</th>
+                                <th style={{ padding: '0.5rem 0.75rem' }}>Source</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[
+                                { label: 'Energy', val: offProduct.nutriments['energy-kcal_100g'] ? `${offProduct.nutriments['energy-kcal_100g']} kcal` : (offProduct.nutriments.energy_100g ? `${offProduct.nutriments.energy_100g} kJ` : null) },
+                                { label: 'Total Fat', val: offProduct.nutriments['fat_100g'] !== undefined ? `${offProduct.nutriments['fat_100g']} g` : null },
+                                { label: 'Saturated Fat', val: offProduct.nutriments['saturated-fat_100g'] !== undefined ? `${offProduct.nutriments['saturated-fat_100g']} g` : null },
+                                { label: 'Carbohydrates', val: offProduct.nutriments['carbohydrates_100g'] !== undefined ? `${offProduct.nutriments['carbohydrates_100g']} g` : null },
+                                { label: 'Sugars', val: offProduct.nutriments['sugars_100g'] !== undefined ? `${offProduct.nutriments['sugars_100g']} g` : null },
+                                { label: 'Proteins', val: offProduct.nutriments['proteins_100g'] !== undefined ? `${offProduct.nutriments['proteins_100g']} g` : null },
+                                { label: 'Salt', val: offProduct.nutriments['salt_100g'] !== undefined ? `${offProduct.nutriments['salt_100g']} g` : null },
+                                { label: 'Sodium', val: offProduct.nutriments['sodium_100g'] !== undefined ? `${offProduct.nutriments['sodium_100g']} g` : null }
+                              ].map((item, nIdx) => (
+                                <tr key={nIdx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                  <td style={{ padding: '0.45rem 0.75rem', fontWeight: 600 }}>{item.label}</td>
+                                  <td style={{ padding: '0.45rem 0.75rem', color: item.val ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: item.val ? 'normal' : 'italic' }}>
+                                    {item.val || 'Not available in Open Food Facts'}
+                                  </td>
+                                  <td style={{ padding: '0.45rem 0.75rem', color: 'var(--accent-cyan)', fontSize: '0.72rem' }}>
+                                    OPEN FOOD FACTS
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem', padding: '1rem 0' }}>
+                          Not available in Open Food Facts
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ingredients & Allergens */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+                        Ingredients Text
+                      </h4>
+                      {offProduct.ingredients_text ? (
+                        <div style={{
+                          background: 'rgba(0,0,0,0.3)',
+                          padding: '1rem',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          lineHeight: '1.5',
+                          color: 'var(--text-primary)',
+                          border: '1px solid var(--border-color)',
+                          whiteSpace: 'pre-line',
+                          maxHeight: '220px',
+                          overflowY: 'auto'
+                        }}>
+                          {offProduct.ingredients_text}
+                        </div>
+                      ) : (
+                        <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.88rem' }}>
+                          Not available in Open Food Facts
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+                        Allergens & Labels
+                      </h4>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.35rem' }}>Allergens</div>
+                        <div style={{ fontSize: '0.85rem', color: offProduct.allergens ? 'var(--accent-rose)' : 'var(--text-muted)', fontStyle: offProduct.allergens ? 'normal' : 'italic' }}>
+                          {offProduct.allergens || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.35rem' }}>Labels / Certifications</div>
+                        <div style={{ fontSize: '0.85rem', color: offProduct.labels ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: offProduct.labels ? 'normal' : 'italic' }}>
+                          {offProduct.labels || 'Not available in Open Food Facts'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Product Images Gallery */}
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Eye size={16} style={{ color: 'var(--accent-cyan)' }} />
+                      <span>Product Images from Open Food Facts</span>
+                    </h4>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                      {[
+                        { title: 'Front Package Label', url: offProduct.image_front_url || offProduct.image_front_small_url },
+                        { title: 'Ingredients Label', url: offProduct.image_ingredients_url },
+                        { title: 'Nutrition Label', url: offProduct.image_nutrition_url }
+                      ].map((img, iIdx) => (
+                        <div key={iIdx} style={{
+                          background: 'rgba(0,0,0,0.3)',
+                          borderRadius: '10px',
+                          border: '1px solid var(--border-color)',
+                          padding: '0.9rem',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.6rem' }}>{img.title}</div>
+                          {img.url ? (
+                            <div>
+                              <img
+                                src={img.url}
+                                alt={img.title}
+                                style={{ maxHeight: '180px', maxWidth: '100%', objectFit: 'contain', borderRadius: '6px', marginBottom: '0.6rem' }}
+                              />
+                              <div>
+                                <a
+                                  href={img.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                                >
+                                  <span>View High-Res Image</span>
+                                  <ExternalLink size={12} />
+                                </a>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.82rem', padding: '2rem 0' }}>
+                              Not available in Open Food Facts
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Section 9: Image OCR + Open Food Facts Cross-Check */}
+                  <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(0, 242, 254, 0.25)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                          <CheckCircle2 size={20} style={{ color: 'var(--accent-cyan)' }} />
+                          <span>Image OCR vs Open Food Facts Cross-Check</span>
+                        </h3>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                          Informational consistency comparison between physically detected image text and community database records.
+                        </div>
+                      </div>
+
+                      {offCrossCheck && offCrossCheck.available && (
+                        <span style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: offCrossCheck.details_consistent ? 'var(--accent-emerald)' : 'var(--accent-amber)',
+                          background: offCrossCheck.details_consistent ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                          padding: '0.3rem 0.75rem',
+                          borderRadius: '9999px',
+                          border: `1px solid ${offCrossCheck.details_consistent ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+                        }}>
+                          {offCrossCheck.details_consistent ? '✓ All Checked Fields Match' : `⚠ ${offCrossCheck.mismatches_found} Field Difference(s)`}
+                        </span>
+                      )}
+                    </div>
+
+                    {offCrossCheck && offCrossCheck.field_checks && offCrossCheck.field_checks.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {offCrossCheck.field_checks.map((chk, idx) => (
+                          <div key={idx} style={{
+                            background: 'rgba(0,0,0,0.3)',
+                            padding: '0.9rem 1.1rem',
+                            borderRadius: '10px',
+                            border: `1px solid ${chk.status === 'MATCH' ? 'rgba(16, 185, 129, 0.25)' : (chk.status === 'POSSIBLE MISMATCH' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(255,255,255,0.08)')}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '0.75rem'
+                          }}>
+                            <div style={{ flex: '1 1 300px' }}>
+                              <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>{chk.field}</div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                                {chk.explanation}
+                              </div>
+                              <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.35rem', fontSize: '0.78rem' }}>
+                                <span><strong>Image OCR:</strong> <code style={{ color: 'var(--accent-emerald)' }}>{chk.ocr_value}</code></span>
+                                <span><strong>Open Food Facts:</strong> <code style={{ color: 'var(--accent-cyan)' }}>{chk.off_value}</code></span>
+                              </div>
+                            </div>
+
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '0.3rem 0.7rem',
+                              borderRadius: '6px',
+                              background: chk.status === 'MATCH' ? 'rgba(16, 185, 129, 0.15)' : (chk.status === 'POSSIBLE MISMATCH' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.06)'),
+                              color: chk.status === 'MATCH' ? 'var(--accent-emerald)' : (chk.status === 'POSSIBLE MISMATCH' ? 'var(--accent-amber)' : 'var(--text-muted)'),
+                              border: `1px solid ${chk.status === 'MATCH' ? 'rgba(16, 185, 129, 0.3)' : (chk.status === 'POSSIBLE MISMATCH' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255,255,255,0.1)')}`
+                            }}>
+                              {chk.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                        Cross-check data is not available.
+                      </div>
+                    )}
+
+                    {/* Section 9 Rule engine isolation alert */}
+                    <div style={{
+                      marginTop: '1rem',
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      borderRadius: '8px',
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.75rem',
+                      color: 'var(--accent-amber)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                      <span>
+                        <strong>Legal Isolation:</strong> Differences between Image OCR and Open Food Facts do NOT alter Legal Metrology compliance determinations. Legal compliance is assessed exclusively against official rule criteria using physical packaging evidence.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Section 10: Multiple Data Sources Separation Grid */}
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>
+                      Multi-Source Data Provenance & Separation
+                    </h4>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-emerald)', fontWeight: 800 }}>SOURCE 1</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, marginTop: '0.2rem' }}>IMAGE OCR</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Local Tesseract Engine with pixel OCR bounding boxes.</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 800 }}>SOURCE 2</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, marginTop: '0.2rem' }}>BARCODE DECODER</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>ZXing / OpenCV pixel barcode decoder with Modulo-10 validation.</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#60a5fa', fontWeight: 800 }}>SOURCE 3</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, marginTop: '0.2rem' }}>OPEN FOOD FACTS</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Public community-maintained crowdsourced product database.</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 800 }}>SOURCE 4</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, marginTop: '0.2rem' }}>AI PRODUCT ENRICHMENT</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>AI vision / catalog enrichment provider layer.</div>
+                      </div>
+
+                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-amber)', fontWeight: 800 }}>SOURCE 5</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, marginTop: '0.2rem' }}>USER / INSPECTOR INPUT</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Inspector Terminal manual measurements and overrides.</div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
           )}
