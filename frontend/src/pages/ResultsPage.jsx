@@ -11,7 +11,11 @@ const STATUS_COLOR_MAP = {
 };
 
 export default function ResultsPage({ scanResult, onNewScan }) {
-  const [viewMode, setViewMode] = useState('rules'); // 'rules' | 'evidence' | 'enrichment' | 'web_research' | 'grid' | 'json'
+  const [viewMode, setViewMode] = useState(
+    (scanResult?.openfoodfacts?.status === 'FOUND' || scanResult?.openfoodfacts_product || scanResult?.barcode)
+      ? 'openfoodfacts'
+      : 'rules'
+  );
   const [imageTab, setImageTab] = useState('interactive'); // 'interactive' | 'annotated' | 'original'
   const [selectedRuleId, setSelectedRuleId] = useState(null);
   const [searchTraceOpen, setSearchTraceOpen] = useState(false);
@@ -144,24 +148,6 @@ export default function ResultsPage({ scanResult, onNewScan }) {
           </a>
 
           <button
-            className={`nav-button ${viewMode === 'rules' ? 'active' : ''}`}
-            onClick={() => setViewMode('rules')}
-            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
-          >
-            <FileText size={16} />
-            <span>Legal Rules ({rule_results?.length || 0})</span>
-          </button>
-
-          <button
-            className={`nav-button ${viewMode === 'enrichment' ? 'active' : ''}`}
-            onClick={() => setViewMode('enrichment')}
-            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
-          >
-            <Barcode size={16} />
-            <span>Product & Barcode</span>
-          </button>
-
-          <button
             className={`nav-button ${viewMode === 'openfoodfacts' ? 'active' : ''}`}
             onClick={() => setViewMode('openfoodfacts')}
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
@@ -192,6 +178,24 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                 NOT FOUND
               </span>
             )}
+          </button>
+
+          <button
+            className={`nav-button ${viewMode === 'rules' ? 'active' : ''}`}
+            onClick={() => setViewMode('rules')}
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
+          >
+            <FileText size={16} />
+            <span>Legal Rules ({rule_results?.length || 0})</span>
+          </button>
+
+          <button
+            className={`nav-button ${viewMode === 'enrichment' ? 'active' : ''}`}
+            onClick={() => setViewMode('enrichment')}
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }}
+          >
+            <Barcode size={16} />
+            <span>Product & Barcode</span>
           </button>
 
           <button
@@ -1098,7 +1102,7 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                       <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0 }}>Open Food Facts Product Data</h2>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      Community-driven product database integration via official API v2 • Decoded Barcode: <strong className="mono-text" style={{ color: 'var(--accent-cyan)' }}>{scanResult.barcode || 'N/A'}</strong>
+                      Product information retrieved from Open Food Facts • Official API v3 • Decoded Barcode: <strong className="mono-text" style={{ color: 'var(--accent-cyan)' }}>{scanResult.barcode || 'N/A'}</strong>
                     </div>
                   </div>
 
@@ -1131,7 +1135,7 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                   </div>
                 </div>
 
-                {/* Subtitle & Legal Disclaimer (Requirement 8 & 11) */}
+                {/* Subtitle & Community Source Disclaimer */}
                 <div style={{
                   background: 'rgba(0, 242, 254, 0.06)',
                   border: '1px solid rgba(0, 242, 254, 0.2)',
@@ -1145,7 +1149,7 @@ export default function ResultsPage({ scanResult, onNewScan }) {
                 }}>
                   <Info size={16} style={{ flexShrink: 0 }} />
                   <span>
-                    <strong>Community Source Notice:</strong> Open Food Facts is a community-maintained product database. Information is not government verified. Legal Metrology compliance verdicts are strictly determined by physical declarations on the package label.
+                    <strong>Product information retrieved from Open Food Facts:</strong> Open Food Facts is a community-maintained database. Information is not government verified or guaranteed correct. Legal Metrology compliance verdicts are strictly determined by physical package label evidence using the deterministic rule engine.
                   </span>
                 </div>
               </div>
@@ -1740,6 +1744,16 @@ export default function ResultsPage({ scanResult, onNewScan }) {
             <div><strong>Passed:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>{scanResult.debug?.["RULE ENGINE"]?.passed ?? summary?.passed ?? 0}</span></div>
             <div><strong>Failed:</strong> <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>{scanResult.debug?.["RULE ENGINE"]?.failed ?? summary?.failed ?? 0}</span></div>
             <div><strong>Not Verifiable:</strong> <span style={{ color: '#f59e0b', fontWeight: 700 }}>{scanResult.debug?.["RULE ENGINE"]?.not_verifiable ?? summary?.not_verifiable ?? 0}</span></div>
+          </div>
+
+          {/* OPEN FOOD FACTS */}
+          <div style={{ background: 'rgba(0,0,0,0.5)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.4rem', textTransform: 'uppercase', fontSize: '0.75rem' }}>OPEN FOOD FACTS</div>
+            <div><strong>Configured:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>YES</span></div>
+            <div><strong>Request attempted:</strong> <span style={{ color: (scanResult.debug?.["OPEN FOOD FACTS"]?.request_attempted ?? (openFoodFacts && openFoodFacts.status !== 'NO_BARCODE')) ? 'var(--accent-emerald)' : 'var(--text-muted)', fontWeight: 700 }}>{(scanResult.debug?.["OPEN FOOD FACTS"]?.request_attempted ?? (openFoodFacts && openFoodFacts.status !== 'NO_BARCODE')) ? 'YES' : 'NO'}</span></div>
+            <div><strong>Status:</strong> <span style={{ color: openFoodFacts?.status === 'FOUND' ? 'var(--accent-emerald)' : (openFoodFacts?.status === 'NOT_FOUND' ? 'var(--accent-amber)' : 'var(--text-muted)'), fontWeight: 700 }}>{scanResult.debug?.["OPEN FOOD FACTS"]?.status || openFoodFacts?.status || 'NO_BARCODE'}</span></div>
+            <div><strong>Barcode used:</strong> <span className="mono-text" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{scanResult.debug?.["OPEN FOOD FACTS"]?.barcode_used || scanResult.barcode || 'None'}</span></div>
+            <div><strong>Response received:</strong> <span style={{ color: (scanResult.debug?.["OPEN FOOD FACTS"]?.response_received ?? (openFoodFacts && ['FOUND', 'NOT_FOUND'].includes(openFoodFacts.status))) ? 'var(--accent-emerald)' : 'var(--accent-amber)', fontWeight: 700 }}>{(scanResult.debug?.["OPEN FOOD FACTS"]?.response_received ?? (openFoodFacts && ['FOUND', 'NOT_FOUND'].includes(openFoodFacts.status))) ? 'YES' : 'NO'}</span></div>
           </div>
 
           {/* DATA INTEGRITY */}

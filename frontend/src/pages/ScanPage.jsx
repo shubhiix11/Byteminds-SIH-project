@@ -4,8 +4,9 @@ import { scanImage } from '../services/api';
 
 const SCAN_STEPS = [
   "Reading package image...",
+  "Decoding barcode from image pixels...",
+  "Querying Open Food Facts API v3 for product details...",
   "Detecting declarations & bounding boxes...",
-  "Normalizing unit values...",
   "Checking Legal Metrology rules...",
   "Measuring character height & scale...",
   "Preparing annotated evidence..."

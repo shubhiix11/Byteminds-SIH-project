@@ -4,7 +4,8 @@
   "private": true,
   "description": "LabelSure AI-Assisted Legal Metrology Compliance Scanner Root Scripts",
   "scripts": {
-    "dev": "npm --prefix frontend run dev",
+    "dev": "node start-all.js",
+    "dev:frontend": "npm --prefix frontend run dev",
     "dev:all": "node start-all.js",
     "build": "npm --prefix frontend run build",
     "start:backend": "python backend/app.py",

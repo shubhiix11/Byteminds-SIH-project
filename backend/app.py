@@ -99,7 +99,7 @@ def health_check():
         "enrichment_provider": os.environ.get("PRODUCT_ENRICHMENT_PROVIDER", "openai"),
         "web_research_provider": web_research_manager.provider.provider_name,
         "web_research_configured": "YES" if web_research_manager.provider.is_available() else "NO",
-        "openfoodfacts_provider": "Open Food Facts API v2",
+        "openfoodfacts_provider": "Open Food Facts API v3",
         "version": "7.1.0-OFF-INTEGRATION"
     }), 200
 
@@ -228,10 +228,44 @@ def scan_image():
         # Step 2: Local Barcode Decoder directly from image pixels
         barcode_decoding_result = decode_barcode(file_path)
         actual_barcode = barcode_decoding_result.get("barcode") or form_barcode or None
+        decoded_barcode = barcode_decoding_result.get("barcode") if barcode_decoding_result.get("detected") else None
 
         declarations = dict(raw_facts.get("declarations", {}))
 
-        # Step 3: Optional OpenAI Vision (Run only if configured; failure does NOT break scan)
+        # Step 3: Open Food Facts Product Lookup FIRST (Official community database lookup)
+        off_request_attempted = False
+        off_response_received = False
+
+        if not decoded_barcode:
+            off_result = {
+                "available": False,
+                "status": "NO_BARCODE",
+                "barcode": None,
+                "source": "OPEN_FOOD_FACTS",
+                "message": "Barcode not detected"
+            }
+            off_cross_check = {"available": False, "reason": "No barcode detected for Open Food Facts lookup."}
+        else:
+            off_request_attempted = True
+            try:
+                # Query Open Food Facts API v3 first
+                off_result = openfoodfacts_service.get_product_by_barcode(decoded_barcode)
+                off_response_received = off_result.get("status") in ["FOUND", "NOT_FOUND"]
+                off_cross_check = openfoodfacts_service.cross_check_with_ocr(declarations, off_result)
+            except Exception as off_err:
+                app.logger.warning(f"Open Food Facts lookup failed gracefully: {off_err}")
+                off_result = {
+                    "available": False,
+                    "status": "UNAVAILABLE",
+                    "barcode": decoded_barcode,
+                    "source": "OPEN_FOOD_FACTS",
+                    "message": "Open Food Facts service is currently unavailable."
+                }
+                off_cross_check = {"available": False, "reason": "Open Food Facts service unavailable."}
+
+        off_result["cross_check"] = off_cross_check
+
+        # Step 4: Optional OpenAI Vision (Run only if configured; failure does NOT break scan)
         openai_attempted = False
         openai_available = api_key_configured
         openai_status = "DISABLED" if not api_key_configured else "PENDING"
@@ -264,23 +298,29 @@ def scan_image():
         raw_facts["product_metadata"]["single_surface_only"] = True
         raw_facts["declarations"] = declarations
 
-        # Extract product metadata from real OCR declarations
-        product_name = str(declarations.get("commodity_name", {}).get("value") if isinstance(declarations.get("commodity_name"), dict) else declarations.get("commodity_name", "Packaged Commodity")).strip() if declarations.get("commodity_name") else "Packaged Commodity"
-        mfg_dict = declarations.get("manufacturer") or {}
-        mfg_name = mfg_dict.get("name") if isinstance(mfg_dict, dict) else str(mfg_dict) if mfg_dict else None
-        brand = mfg_name or "Generic Brand"
+        # Extract product metadata from real OCR declarations, prioritized with Open Food Facts
+        off_p = off_result.get("product") or {}
+        off_name = off_p.get("name") or off_p.get("product_name")
+        off_brand = off_p.get("brand") or off_p.get("brands")
 
-        # Step 4: Physical Character Height Measurement
+        ocr_name = str(declarations.get("commodity_name", {}).get("value") if isinstance(declarations.get("commodity_name"), dict) else declarations.get("commodity_name", "")).strip()
+        mfg_dict = declarations.get("manufacturer") or {}
+        mfg_name = (mfg_dict.get("name") if isinstance(mfg_dict, dict) else str(mfg_dict)) if mfg_dict else (off_brand or None)
+
+        product_name = ocr_name or off_name or "Packaged Commodity"
+        brand = mfg_name or off_brand or "Generic Brand"
+
+        # Step 5: Physical Character Height Measurement
         measurements = measurement_service.measure_declarations(declarations, measurement_input)
 
-        # Step 5: Deterministic Legal Metrology Rule Engine (SOLE & FINAL LEGAL DECISION MAKER)
+        # Step 6: Deterministic Legal Metrology Rule Engine (SOLE & FINAL LEGAL DECISION MAKER)
         compliance_result = compliance_engine.process_scan(
             vision_output=raw_facts,
             inspection_date=inspection_date,
             measurement_input=measurement_input
         )
 
-        # Step 6: Server-Side Image Evidence Annotation
+        # Step 7: Server-Side Image Evidence Annotation
         rule_results = compliance_result["rule_results"]
         annotated_path, annotations_metadata = annotation_service.create_annotated_image(
             original_image_path=file_path,
@@ -288,53 +328,39 @@ def scan_image():
             output_dir=UPLOADS_DIR
         )
 
-        # Step 7: Product & Barcode Enrichment (OPTIONAL INFORMATIONAL LAYER)
+        # Step 8: Optional Secondary Product Enrichment
+        # If Open Food Facts already identified the product, use Open Food Facts data directly
         enrichment_attempted = bool(actual_barcode or declarations)
         enrichment_result = {}
         enrichment_status = "SKIPPED"
-        try:
-            enrichment_result = enrichment_service.enrich_product(barcode=actual_barcode, detected_declarations=declarations)
-            enrichment_status = "SUCCESS" if enrichment_result.get("product_name") else "NOT_FOUND"
-        except Exception as enrich_err:
-            enrichment_status = "FAILED"
-            app.logger.warning(f"Optional Product Enrichment encountered error: {enrich_err}")
+        if off_result.get("status") == "FOUND" and off_name:
+            enrichment_result = {
+                "available": True,
+                "status": "SUCCESS",
+                "source": "OPEN_FOOD_FACTS",
+                "product_name": off_name,
+                "brand": off_brand or "Generic Brand",
+                "category": off_p.get("category") or "Packaged Commodity",
+                "quantity": off_p.get("quantity")
+            }
+            enrichment_status = "SUCCESS"
+        else:
+            try:
+                enrichment_result = enrichment_service.enrich_product(barcode=actual_barcode, detected_declarations=declarations)
+                enrichment_status = "SUCCESS" if enrichment_result.get("product_name") else "NOT_FOUND"
+            except Exception as enrich_err:
+                enrichment_status = "FAILED"
+                app.logger.warning(f"Optional Product Enrichment encountered error: {enrich_err}")
 
         cross_check_result = CrossCheckEngine.cross_check(detected_declarations=declarations, enrichment_data=enrichment_result)
 
-        # Step 8: Web Product Research Layer (INFORMATIONAL & EVIDENCE LAYER)
+        # Step 9: Web Product Research Layer (INFORMATIONAL & EVIDENCE LAYER)
         web_research_result = web_research_manager.run_research(
             barcode=actual_barcode,
             detected_declarations=declarations,
             all_detected_text=raw_facts.get("all_detected_text", ""),
             scan_id=scan_id
         )
-
-        # Step 9: Open Food Facts Product Lookup (Strictly from real barcode decoder)
-        decoded_barcode = barcode_decoding_result.get("barcode") if barcode_decoding_result.get("detected") else None
-        off_result = {
-            "available": False,
-            "status": "NO_BARCODE",
-            "barcode": None,
-            "source": "OPEN_FOOD_FACTS",
-            "message": "Barcode not detected"
-        }
-        off_cross_check = {"available": False, "reason": "No barcode detected for Open Food Facts lookup."}
-
-        if decoded_barcode:
-            try:
-                off_result = openfoodfacts_service.get_product_by_barcode(decoded_barcode)
-                off_cross_check = openfoodfacts_service.cross_check_with_ocr(declarations, off_result)
-            except Exception as off_err:
-                app.logger.warning(f"Open Food Facts lookup failed gracefully: {off_err}")
-                off_result = {
-                    "available": False,
-                    "status": "UNAVAILABLE",
-                    "barcode": decoded_barcode,
-                    "source": "OPEN_FOOD_FACTS",
-                    "message": "Open Food Facts service is currently unavailable."
-                }
-                off_cross_check = {"available": False, "reason": "Open Food Facts service unavailable."}
-        off_result["cross_check"] = off_cross_check
 
         # Dual OCR cross check details
         ocr_cross_check = {"available": False, "reason": "Local Tesseract OCR executed independently"}
@@ -432,8 +458,11 @@ def scan_image():
                 "sources_used": web_research_result.get("sources_used", 0)
             },
             "OPEN FOOD FACTS": {
+                "configured": True,
+                "request_attempted": off_request_attempted,
                 "status": off_result.get("status"),
-                "barcode": decoded_barcode,
+                "barcode_used": decoded_barcode if off_request_attempted else None,
+                "response_received": off_response_received,
                 "product_found": bool(off_result.get("status") == "FOUND"),
                 "source_url": off_result.get("source_url")
             },
@@ -586,23 +615,22 @@ def get_openfoodfacts_endpoint(barcode):
             status_code = 503
         return jsonify({
             "success": bool(res.get("available", False)),
+            "status": res.get("status"),
             "source": "OPEN_FOOD_FACTS",
             "barcode": barcode,
-            "status": res.get("status"),
             "product": res.get("product"),
             "source_url": res.get("source_url"),
             "retrieved_at": res.get("retrieved_at"),
-            "disclaimer": res.get("disclaimer"),
-            "data": res
+            "disclaimer": res.get("disclaimer")
         }), status_code
     except Exception as e:
         app.logger.error(f"Error in /api/openfoodfacts/{barcode}: {e}")
         return jsonify({
             "success": False,
+            "status": "UNAVAILABLE",
             "source": "OPEN_FOOD_FACTS",
             "barcode": barcode,
-            "status": "UNAVAILABLE",
-            "error": str(e)
+            "message": "Open Food Facts service is currently unavailable."
         }), 500
 
 @app.route('/api/scans', methods=['GET'])
