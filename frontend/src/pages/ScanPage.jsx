@@ -86,7 +86,7 @@ export default function ScanPage({ onScanComplete, user, onNavigateLogin }) {
 
     const stepInterval = setInterval(() => {
       setScanStepIndex((prev) => (prev < SCAN_STEPS.length - 1 ? prev + 1 : prev));
-    }, 450);
+    }, 950);
 
     try {
       const result = await scanImage(selectedFile, cleanBarcode || null, {
@@ -412,11 +412,15 @@ export default function ScanPage({ onScanComplete, user, onNavigateLogin }) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
               <div className="spinner"></div>
               <span style={{ fontWeight: 800, color: 'var(--sage-deep)', fontSize: '0.95rem' }}>
-                {SCAN_STEPS[scanStepIndex]}
+                {scanStepIndex === SCAN_STEPS.length - 1
+                  ? "Finalizing compliance verification & evidence..."
+                  : SCAN_STEPS[scanStepIndex]}
               </span>
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 600 }}>
-              Step {scanStepIndex + 1} of {SCAN_STEPS.length} • Deterministic Metrology Engine
+              {scanStepIndex === SCAN_STEPS.length - 1
+                ? "Deterministic Metrology Engine • Synthesizing findings & bounding boxes"
+                : `Step ${scanStepIndex + 1} of ${SCAN_STEPS.length} • Deterministic Metrology Engine`}
             </div>
           </div>
         )}
