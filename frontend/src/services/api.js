@@ -14,7 +14,7 @@ export async function checkHealth() {
   }
 }
 
-async function resizeImageIfNeeded(file, maxDimension = 1400) {
+async function resizeImageIfNeeded(file, maxDimension = 1024) {
   if (!file || !file.type || !file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
     try {
@@ -68,7 +68,7 @@ async function resizeImageIfNeeded(file, maxDimension = 1400) {
 
 export async function scanImage(imageFile, barcode = null, options = {}) {
   const { persist = true, inspector = null } = options;
-  const optimizedImage = await resizeImageIfNeeded(imageFile, 1400);
+  const optimizedImage = await resizeImageIfNeeded(imageFile, 1024);
   const formData = new FormData();
   const safeFileName = imageFile.name || 'commodity_label.jpg';
   formData.append('image', optimizedImage, safeFileName);

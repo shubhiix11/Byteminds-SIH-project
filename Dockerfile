@@ -5,7 +5,11 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TESSERACT_CMD=/usr/bin/tesseract \
-    PORT=5001
+    PORT=5001 \
+    OMP_THREAD_LIMIT=1 \
+    OMP_NUM_THREADS=1 \
+    MALLOC_ARENA_MAX=2 \
+    RENDER=true
 
 # Install system dependencies:
 # - tesseract-ocr & tesseract-ocr-eng: Genuine local OCR engine and English training data
@@ -44,5 +48,5 @@ RUN tesseract --version && \
 # Expose port (Render overrides with dynamic $PORT)
 EXPOSE 5001
 
-# Start Gunicorn server using dynamic Render $PORT (fallback to 5001) with 180s timeout for OCR processing
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 2 --timeout 180 app:app"]
+# Start Gunicorn server with 1 worker and 4 threads for low-memory container stability and fast responses
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 1 --threads 4 --timeout 180 app:app"]

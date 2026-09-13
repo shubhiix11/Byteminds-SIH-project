@@ -355,8 +355,8 @@ class LocalOCRService:
 
         # Normalization for oversized images (preserves optimal Tesseract font height ~30-35px while bounding processing time)
         max_dim = max(orig_h, orig_w)
-        if max_dim > 1400:
-            scale_input = 1400.0 / max_dim
+        if max_dim > 1024:
+            scale_input = 1024.0 / max_dim
             norm_w = int(orig_w * scale_input)
             norm_h = int(orig_h * scale_input)
             proc_img = cv2.resize(cv_img, (norm_w, norm_h), interpolation=cv2.INTER_AREA)
@@ -405,10 +405,11 @@ class LocalOCRService:
         tier2_executed = False
         tier2_passes_count = 0
 
-        # If mandatory declarations are missing, trigger Tier 2 Targeted Fallback passes
-        if not is_complete:
+        # If mandatory declarations are missing and Tier 1 did not achieve broad coverage, trigger top 2 targeted fallback passes
+        if not is_complete and len(declarations) < 4:
             tier2_passes = self._generate_tier2_fallback_passes(rot_img, missing_fields)
             if tier2_passes:
+                tier2_passes = tier2_passes[:2]  # Bounded to top 2 targeted passes for predictable low latency
                 tier2_executed = True
                 tier2_passes_count = len(tier2_passes)
                 with ThreadPoolExecutor(max_workers=workers) as executor:
