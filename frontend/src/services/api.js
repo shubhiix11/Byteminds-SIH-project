@@ -14,53 +14,64 @@ export async function checkHealth() {
   }
 }
 
-async function resizeImageIfNeeded(file, maxDimension = 1600) {
+async function resizeImageIfNeeded(file, maxDimension = 1400) {
   if (!file || !file.type || !file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const { width, height } = img;
-      if (width <= maxDimension && height <= maxDimension) {
-        return resolve(file);
-      }
-      let newW = width;
-      let newH = height;
-      if (width > height) {
-        newH = Math.round((height * maxDimension) / width);
-        newW = maxDimension;
-      } else {
-        newW = Math.round((width * maxDimension) / height);
-        newH = maxDimension;
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = newW;
-      canvas.height = newH;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, newW, newH);
-      canvas.toBlob((blob) => {
-        if (!blob) return resolve(file);
-        const optimizedFile = new File([blob], file.name, {
-          type: 'image/jpeg',
-          lastModified: Date.now()
-        });
-        resolve(optimizedFile);
-      }, 'image/jpeg', 0.92);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const { width, height } = img;
+        if (width <= maxDimension && height <= maxDimension) {
+          return resolve(file);
+        }
+        let newW = width;
+        let newH = height;
+        if (width > height) {
+          newH = Math.round((height * maxDimension) / width);
+          newW = maxDimension;
+        } else {
+          newW = Math.round((width * maxDimension) / height);
+          newH = maxDimension;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = newW;
+        canvas.height = newH;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, newW, newH);
+        canvas.toBlob((blob) => {
+          if (!blob) return resolve(file);
+          try {
+            const fileName = file.name || 'commodity_label.jpg';
+            const optimizedFile = new File([blob], fileName, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(optimizedFile);
+          } catch (e) {
+            // Mobile Safari / Android WebView fallback when new File([blob]) is unsupported
+            resolve(blob);
+          }
+        }, 'image/jpeg', 0.90);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    } catch (err) {
       resolve(file);
-    };
-    img.src = url;
+    }
   });
 }
 
 export async function scanImage(imageFile, barcode = null, options = {}) {
   const { persist = true, inspector = null } = options;
-  const optimizedImage = await resizeImageIfNeeded(imageFile);
+  const optimizedImage = await resizeImageIfNeeded(imageFile, 1400);
   const formData = new FormData();
-  formData.append('image', optimizedImage);
+  const safeFileName = imageFile.name || 'commodity_label.jpg';
+  formData.append('image', optimizedImage, safeFileName);
   formData.append('persist', String(persist !== false));
   if (inspector) {
     formData.append('inspector', inspector);
@@ -71,12 +82,23 @@ export async function scanImage(imageFile, barcode = null, options = {}) {
     formData.append('barcode', cleanBarcode);
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/scan`, {
-    method: 'POST',
-    body: formData,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/scan`, {
+      method: 'POST',
+      body: formData,
+    });
+  } catch (netErr) {
+    throw new Error('Could not connect to the inspection backend server. Please check your network connection or verify that the backend is awake.');
+  }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch (parseErr) {
+    throw new Error(`Server returned status ${response.status} (${response.statusText || 'Unknown Error'})`);
+  }
+
   if (!response.ok) {
     throw new Error(data.error || data.details || 'Failed to scan image');
   }

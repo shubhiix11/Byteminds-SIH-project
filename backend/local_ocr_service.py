@@ -186,22 +186,24 @@ class LocalOCRService:
         # 3 & 4. Top Strip (Where Brand, Commodity Name, Dates, and Consumer Care reside)
         top_crop = rot_img[0:int(rh * 0.45), 0:rw]
         if top_crop.shape[0] > 20 and top_crop.shape[1] > 20:
-            top_up = cv2.resize(top_crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+            scale_top = 1.5 if top_crop.shape[0] < 300 else 1.0
+            top_up = cv2.resize(top_crop, None, fx=scale_top, fy=scale_top, interpolation=cv2.INTER_CUBIC) if scale_top > 1.0 else top_crop
             top_gray = cv2.cvtColor(top_up, cv2.COLOR_BGR2GRAY)
             top_clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(top_gray)
-            passes.append(("top_clahe_psm11", (0, 0), 2.0, top_clahe, 11))
+            passes.append(("top_clahe_psm11", (0, 0), scale_top, top_clahe, 11))
 
             top_adapt = cv2.adaptiveThreshold(top_clahe, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10)
-            passes.append(("top_adapt_psm6", (0, 0), 2.0, top_adapt, 6))
+            passes.append(("top_adapt_psm6", (0, 0), scale_top, top_adapt, 6))
 
         # 5. Bottom Strip (Where Nutrition Tables, Weights, MRPs, and Addresses reside)
         bot_y = int(rh * 0.50)
         bot_crop = rot_img[bot_y:rh, 0:rw]
         if bot_crop.shape[0] > 20 and bot_crop.shape[1] > 20:
-            bot_up = cv2.resize(bot_crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+            scale_bot = 1.5 if bot_crop.shape[0] < 300 else 1.0
+            bot_up = cv2.resize(bot_crop, None, fx=scale_bot, fy=scale_bot, interpolation=cv2.INTER_CUBIC) if scale_bot > 1.0 else bot_crop
             bot_gray = cv2.cvtColor(bot_up, cv2.COLOR_BGR2GRAY)
             bot_clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(bot_gray)
-            passes.append(("bot_clahe_psm11", (0, bot_y), 2.0, bot_clahe, 11))
+            passes.append(("bot_clahe_psm11", (0, bot_y), scale_bot, bot_clahe, 11))
 
         return passes
 
@@ -222,13 +224,14 @@ class LocalOCRService:
         # Top strip fallbacks (top_rinv, top_sharp)
         top_crop = rot_img[0:int(rh * 0.45), 0:rw]
         if top_crop.shape[0] > 20 and top_crop.shape[1] > 20:
-            top_up = cv2.resize(top_crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+            scale_top = 1.5 if top_crop.shape[0] < 300 else 1.0
+            top_up = cv2.resize(top_crop, None, fx=scale_top, fy=scale_top, interpolation=cv2.INTER_CUBIC) if scale_top > 1.0 else top_crop
             
             # top_rinv: essential for colored foil packaging
             if not missing_fields or any(f in missing_fields for f in ["consumer_care", "commodity_name", "manufacturer"]):
                 _, _, tr = cv2.split(top_up)
                 top_rinv = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(255 - tr)
-                passes.append(("top_rinv_psm11", (0, 0), 2.0, top_rinv, 11))
+                passes.append(("top_rinv_psm11", (0, 0), scale_top, top_rinv, 11))
 
             # top_sharp: sharpened for low-contrast edges
             if not missing_fields or "commodity_name" in missing_fields or "manufacturer" in missing_fields:
@@ -236,36 +239,38 @@ class LocalOCRService:
                 top_clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(top_gray)
                 kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
                 top_sharp = cv2.filter2D(top_clahe, -1, kernel)
-                passes.append(("top_sharp_psm6", (0, 0), 2.0, top_sharp, 6))
+                passes.append(("top_sharp_psm6", (0, 0), scale_top, top_sharp, 6))
 
         # Middle strip fallback (mid_clahe)
         mid_y = int(rh * 0.30)
         mid_crop = rot_img[mid_y:int(rh * 0.70), 0:rw]
         if mid_crop.shape[0] > 20 and mid_crop.shape[1] > 20:
             if not missing_fields or "net_quantity" in missing_fields:
-                mid_up = cv2.resize(mid_crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+                scale_mid = 1.5 if mid_crop.shape[0] < 300 else 1.0
+                mid_up = cv2.resize(mid_crop, None, fx=scale_mid, fy=scale_mid, interpolation=cv2.INTER_CUBIC) if scale_mid > 1.0 else mid_crop
                 mid_gray = cv2.cvtColor(mid_up, cv2.COLOR_BGR2GRAY)
                 mid_clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(mid_gray)
-                passes.append(("mid_clahe_psm11", (0, mid_y), 2.0, mid_clahe, 11))
+                passes.append(("mid_clahe_psm11", (0, mid_y), scale_mid, mid_clahe, 11))
 
         # Bottom strip fallbacks (bot_adapt, bot_rinv)
         bot_y = int(rh * 0.50)
         bot_crop = rot_img[bot_y:rh, 0:rw]
         if bot_crop.shape[0] > 20 and bot_crop.shape[1] > 20:
-            bot_up = cv2.resize(bot_crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+            scale_bot = 1.5 if bot_crop.shape[0] < 300 else 1.0
+            bot_up = cv2.resize(bot_crop, None, fx=scale_bot, fy=scale_bot, interpolation=cv2.INTER_CUBIC) if scale_bot > 1.0 else bot_crop
             
             # bot_adapt: adaptive threshold for faint dot-matrix dates or MRP
             if not missing_fields or any(f in missing_fields for f in ["date_of_manufacture", "max_retail_price"]):
                 bot_gray = cv2.cvtColor(bot_up, cv2.COLOR_BGR2GRAY)
                 bot_clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(bot_gray)
                 bot_adapt = cv2.adaptiveThreshold(bot_clahe, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10)
-                passes.append(("bot_adapt_psm11", (0, bot_y), 2.0, bot_adapt, 11))
+                passes.append(("bot_adapt_psm11", (0, bot_y), scale_bot, bot_adapt, 11))
 
             # bot_rinv: red-channel inverted bottom strip
             if not missing_fields or any(f in missing_fields for f in ["max_retail_price", "net_quantity"]):
                 _, _, br = cv2.split(bot_up)
                 bot_rinv = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(255 - br)
-                passes.append(("bot_rinv_psm6", (0, bot_y), 2.0, bot_rinv, 6))
+                passes.append(("bot_rinv_psm6", (0, bot_y), scale_bot, bot_rinv, 6))
 
         return passes
 
@@ -348,8 +353,19 @@ class LocalOCRService:
 
         orig_h, orig_w = cv_img.shape[:2]
 
+        # Normalization for oversized images (preserves optimal Tesseract font height ~30-35px while bounding processing time)
+        max_dim = max(orig_h, orig_w)
+        if max_dim > 1400:
+            scale_input = 1400.0 / max_dim
+            norm_w = int(orig_w * scale_input)
+            norm_h = int(orig_h * scale_input)
+            proc_img = cv2.resize(cv_img, (norm_w, norm_h), interpolation=cv2.INTER_AREA)
+        else:
+            scale_input = 1.0
+            proc_img = cv_img
+
         # 1. Fast Orientation Detection (with safe 0 deg early exit)
-        best_angle, rot_img, orientation_scores = self.detect_best_orientation(cv_img)
+        best_angle, rot_img, orientation_scores = self.detect_best_orientation(proc_img)
 
         # 2. Tier 1 — Fast Core Passes (run concurrently with environment-aware workers)
         tier1_passes = self._generate_tier1_passes(rot_img)
@@ -359,7 +375,9 @@ class LocalOCRService:
             pname, offset, scale_factor, pimg, psm = pargs
             try:
                 ocr_dict = pytesseract.image_to_data(pimg, config=f'--psm {psm}', output_type=pytesseract.Output.DICT)
-                return self._group_lines(ocr_dict, offset, scale_factor, best_angle, orig_w, orig_h)
+                effective_scale = scale_factor * scale_input
+                effective_offset = (offset[0] / scale_input, offset[1] / scale_input)
+                return self._group_lines(ocr_dict, effective_offset, effective_scale, best_angle, orig_w, orig_h)
             except Exception:
                 return []
 
